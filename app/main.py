@@ -2,7 +2,7 @@
 
 启动方式：
     uvicorn app.main:app --port 8000
-启动时自动建表；演示数据由后续阶段的 seed 脚本灌入。
+启动时自动建表并幂等灌入演示数据（AUTO_SEED=0 可关闭）。
 """
 
 from __future__ import annotations
@@ -12,14 +12,18 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app import config
 from app.db import init_db
 from app.exceptions import AppError
 from app.routers import audit, auth, director, leader, member, meta
+from app.seed import seed_demo_data
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     init_db()
+    if config.AUTO_SEED:
+        seed_demo_data()
     yield
 
 

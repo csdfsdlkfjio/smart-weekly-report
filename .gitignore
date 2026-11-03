@@ -24,5 +24,9 @@ Thumbs.db
 # Environment
 .env
 
+# Runtime data
+*.db
+*.sqlite3
+
 # Local files
 01-人工智能岗位招聘实操测试题.pdf

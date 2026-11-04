@@ -11,6 +11,7 @@ def test_index_page_is_served_at_root(client):
     assert "/static/app.js" in body
     assert "/static/style.css" in body
     assert 'data-username="director"' in body
+    assert 'id="director-week" data-week-select data-default-week="previous"' in body
     for element_id in (
         "engine-switch",
         "member-save",
@@ -37,6 +38,8 @@ def test_static_assets_are_served(client):
     assert js.status_code == 200
     assert "javascript" in js.headers["content-type"]
     assert "swr_token" in js.text
+    assert 'select.dataset.defaultWeek === "previous"' in js.text
+    assert "index = preferPrevious && state.weeks.length > 1 ? 1 : 0" in js.text
 
 
 def test_health_and_docs_still_work(client):

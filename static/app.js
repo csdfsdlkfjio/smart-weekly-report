@@ -248,7 +248,14 @@
     $$("[data-week-select]").forEach((select) => {
       const includeAll = select.id === "leader-week";
       select.innerHTML = (includeAll ? '<option value="">全部周次</option>' : "") + options;
-      if (!includeAll && state.weeks.length) select.value = String(state.weeks[0].id);
+
+      if (!includeAll && state.weeks.length) {
+        // 成员默认最新周（含空白填报周）；主任默认上一周，
+        // 符合“周一/周二汇总上周周报”的实际工作节奏。
+        const preferPrevious = select.dataset.defaultWeek === "previous";
+        const index = preferPrevious && state.weeks.length > 1 ? 1 : 0;
+        select.value = String(state.weeks[index].id);
+      }
     });
   }
 

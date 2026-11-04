@@ -37,6 +37,37 @@ def test_merger_keeps_unrelated_items_separate():
     assert len(merged) == 2
 
 
+def test_merger_filters_vague_items_but_returns_them_for_validation():
+    raw_items = [
+        {"user_id": 1, "user_name": "张医生", "category": "done", "content": "完成护理质控检查 3 次"},
+        {"user_id": 3, "user_name": "王医生", "category": "done", "content": "日常工作正常开展"},
+        {"user_id": 3, "user_name": "王医生", "category": "plan", "content": "继续推进相关工作"},
+    ]
+
+    result = MergerAgent().run_rule_detailed(raw_items)
+
+    assert [item["content"] for item in result["items"]] == ["完成护理质控检查 3 次"]
+    assert {item["content"] for item in result["filtered"]} == {
+        "日常工作正常开展",
+        "继续推进相关工作",
+    }
+    assert all(item["source_names"] == ["王医生"] for item in result["filtered"])
+
+
+def test_merger_merges_spot_check_and_self_check_variants():
+    raw_items = [
+        {"user_id": 1, "user_name": "张医生", "category": "done", "content": "完成护理质控抽查 3 次"},
+        {"user_id": 2, "user_name": "李医生", "category": "done", "content": "护理质控自查已完成"},
+    ]
+
+    assert text_similarity(raw_items[0]["content"], raw_items[1]["content"]) >= 0.6
+    merged = MergerAgent().run_rule(raw_items)
+
+    assert len(merged) == 1
+    assert merged[0]["source_user_ids"] == [1, 2]
+    assert merged[0]["source_names"] == ["张医生", "李医生"]
+
+
 def test_validator_flags_vague_expressions():
     merged = [
         {
@@ -165,3 +196,30 @@ def test_graph_rule_switch_and_llm_fallback_traces():
     )
     assert all("降级" in item["detail"] for item in fallback_trace if item["agent"] == "merger")
     assert fallback_result["merged"] and fallback_result["summary"]
+
+
+def test_graph_filters_vague_from_merged_but_keeps_a3_record():
+    raw_items = [
+        {"user_id": 1, "user_name": "张医生", "category": "done", "content": "完成护理质控检查 3 次"},
+        {"user_id": 3, "user_name": "王医生", "category": "done", "content": "日常工作正常开展"},
+    ]
+    context = {
+        "week_no": 1,
+        "members": [
+            {"user_id": 1, "username": "member_a", "name": "张医生", "submitted": True},
+            {"user_id": 3, "username": "member_c", "name": "王医生", "submitted": True},
+        ],
+        "current_reports": [],
+        "previous_reports": [],
+    }
+
+    result = run_aggregate(
+        dept_id=1,
+        week_id=1,
+        raw_items=raw_items,
+        risk_context=context,
+        engine_switch="rule",
+    )
+
+    assert all("日常工作正常开展" not in item["content"] for item in result["merged"])
+    assert any("日常工作正常开展" in item["content"] for item in result["checked"])

@@ -44,7 +44,13 @@ def test_week1_aggregate_merges_nursing_items_with_rule_trace(client, session_fa
     }
     assert all(trace["engine"] == "rule" for trace in body["engine_trace"])
 
-    # A3：member_c 的空泛表述被识别
+    # 空泛表述不得进入展示条目
+    assert all(
+        "日常工作正常开展" not in item["content"] and "继续推进相关工作" not in item["content"]
+        for item in body["items"]
+    )
+
+    # A3：member_c 的空泛表述仍被识别并留痕
     vague_checked = [
         item
         for item in body["checked"]
@@ -75,6 +81,17 @@ def test_week2_aggregate_reports_missing_member_and_cross_week_risks(client, ses
 
     body = _aggregate(client, headers, seed["week_ids"][2])
     risks = body["risks"]
+
+    # 第 2 周“抽查”与“自查”也必须合并，来源包含 A、B 两人
+    merged_nursing = [
+        item
+        for item in body["items"]
+        if item["category"] == "done"
+        and "张医生" in item["source_names"]
+        and "李医生" in item["source_names"]
+    ]
+    assert len(merged_nursing) == 1
+    assert "护理质控" in merged_nursing[0]["content"]
 
     missing = [
         risk

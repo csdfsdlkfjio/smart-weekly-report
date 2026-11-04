@@ -17,6 +17,7 @@ import jieba
 
 from app import config
 from app.agents.base import BaseAgent
+from app.agents.vague import is_vague
 
 jieba.setLogLevel(logging.WARNING)
 jieba.initialize()
@@ -41,7 +42,7 @@ STOPWORDS = {
 _PUNCT_RE = re.compile(r"[\s，。；、,.!?！？:：;\"'“”‘’（）()\[\]【】]+")
 
 _DEFAULT_SYNONYMS = {
-    "检查": ["检查", "自查", "核查", "巡检"],
+    "检查": ["检查", "自查", "核查", "巡检", "抽查"],
     "完成": ["完成", "已完成", "办结"],
     "培训": ["培训", "学习", "讲座"],
     "优化": ["优化", "改进", "完善"],
@@ -87,20 +88,51 @@ def tokens(text: str) -> list[str]:
 
 
 def text_similarity(left: str, right: str) -> float:
-    """Jaccard 相似度，范围 0~1。"""
+    """Jaccard 相似度，范围 0~1。
+
+    额外规则：若一条的词集完全包含另一条（长句包含短句），直接视为高度相似。
+    例如“完成护理质控抽查 3 次”包含“护理质控自查已完成”的核心词。
+    """
     left_tokens = set(tokens(left))
     right_tokens = set(tokens(right))
     if not left_tokens or not right_tokens:
         return 1.0 if str(left).strip() == str(right).strip() else 0.0
+    if left_tokens <= right_tokens or right_tokens <= left_tokens:
+        return 1.0
     return len(left_tokens & right_tokens) / len(left_tokens | right_tokens)
+
+
+def split_vague_items(items: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """把空泛条目从展示结果中分离，供 A3 校验留痕使用。"""
+    kept: list[dict[str, Any]] = []
+    filtered: list[dict[str, Any]] = []
+    for item in items:
+        if is_vague(str(item.get("content", ""))):
+            filtered.append(item)
+        else:
+            kept.append(item)
+    return kept, filtered
 
 
 class MergerAgent(BaseAgent):
     name = "merger"
 
     def run_rule(self, raw_items: list[dict[str, Any]], threshold: float | None = None) -> list[dict[str, Any]]:
+        return self.run_rule_detailed(raw_items, threshold)["items"]
+
+    def run_rule_detailed(
+        self,
+        raw_items: list[dict[str, Any]],
+        threshold: float | None = None,
+    ) -> dict[str, list[dict[str, Any]]]:
+        """归并并在 Merger 阶段剔除空泛条目。
+
+        返回 {"items": 展示用归并结果, "filtered": 被剔除的空泛条目}；
+        filtered 会交给 ValidatorAgent 生成 A3 校验记录。
+        """
         threshold = config.MERGE_THRESHOLD if threshold is None else threshold
         clusters: dict[str, list[dict[str, Any]]] = {category: [] for category in CATEGORY_ORDER}
+        filtered: list[dict[str, Any]] = []
 
         for raw in raw_items:
             category = str(raw.get("category", ""))
@@ -110,6 +142,21 @@ class MergerAgent(BaseAgent):
 
             user_id = int(raw["user_id"])
             user_name = str(raw.get("user_name", user_id))
+
+            # 空泛表述不进入最终展示，但保留下来供 A3 校验留痕
+            if is_vague(content):
+                filtered.append(
+                    {
+                        "id": uuid.uuid4().hex,
+                        "category": category,
+                        "content": content,
+                        "source_user_ids": [user_id],
+                        "source_names": [user_name],
+                        "sort_order": 0,
+                        "edited_by": None,
+                    }
+                )
+                continue
 
             target: dict[str, Any] | None = None
             best_score = 0.0
@@ -144,7 +191,7 @@ class MergerAgent(BaseAgent):
             for item in clusters[category]:
                 item["sort_order"] = len(merged)
                 merged.append(item)
-        return merged
+        return {"items": merged, "filtered": filtered}
 
     def run_llm(self, raw_items: list[dict[str, Any]], timeout: int = 8) -> list[dict[str, Any]]:
         return super().run_llm(raw_items, timeout=timeout)

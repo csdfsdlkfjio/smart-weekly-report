@@ -26,6 +26,7 @@ class WeekReportState(TypedDict, total=False):
     raw_items: list[dict[str, Any]]
     risk_context: dict[str, Any]
     merged: list[dict[str, Any]]
+    filtered_items: list[dict[str, Any]]
     checked: list[dict[str, Any]]
     summary: str
     risks: list[dict[str, Any]]

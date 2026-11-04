@@ -81,9 +81,17 @@ def test_return_and_resubmit_keep_versions(client, seed, login, submit_report):
     assert reaggregated.status_code == 200, reaggregated.text
     assert reaggregated.json()["id"] == dept_report_id
     assert reaggregated.json()["status"] == "已汇总"
-    contents = [item["content"] for item in reaggregated.json()["items"]]
-    assert "完成护理质控检查 3 次，覆盖 100% 病房" in contents
-    assert "完成护理质控检查" in contents  # 来自未退回的成员 B
+
+    # 长句包含短句：A 补充量化后的表述会与 B 的原表述合并，而不是并列出现
+    nursing_items = [
+        item for item in reaggregated.json()["items"] if "护理质控" in item["content"]
+    ]
+    assert len(nursing_items) == 1
+    assert nursing_items[0]["content"] == "完成护理质控检查 3 次，覆盖 100% 病房"
+    assert set(nursing_items[0]["source_user_ids"]) == {
+        seed["user_ids"]["member_a"],
+        seed["user_ids"]["member_b"],
+    }
 
     # 退回与重提均留痕
     timeline = client.get(

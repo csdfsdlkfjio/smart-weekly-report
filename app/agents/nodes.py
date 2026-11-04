@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.agents.merger import MergerAgent
+from app.agents.merger import MergerAgent, split_vague_items
 from app.agents.risk import RiskAgent
 from app.agents.summarizer import SummarizerAgent
 from app.agents.validator import ValidatorAgent
@@ -19,29 +19,33 @@ def merger_node(state: dict[str, Any]) -> dict[str, Any]:
     raw_items = state.get("raw_items", [])
     if state.get("engine_switch") == "llm":
         try:
-            merged = agent.run_llm(raw_items, timeout=8)
+            llm_items = agent.run_llm(raw_items, timeout=8)
+            merged, filtered = split_vague_items(llm_items)
             trace = _trace(agent.name, "llm", "ok", "LLM 归并完成")
         except Exception as exc:  # 节点粒度降级：只影响当前 Agent
-            merged = agent.run_rule(raw_items)
+            result = agent.run_rule_detailed(raw_items)
+            merged, filtered = result["items"], result["filtered"]
             trace = _trace(agent.name, "rule", "degraded", f"LLM 失败自动降级：{exc}")
     else:
-        merged = agent.run_rule(raw_items)
+        result = agent.run_rule_detailed(raw_items)
+        merged, filtered = result["items"], result["filtered"]
         trace = _trace(agent.name, "rule", "ok", "switch=rule")
-    return {"merged": merged, "engine_trace": [trace]}
+    # filtered_items 不进入展示，但交给 ValidatorAgent 生成 A3 校验记录
+    return {"merged": merged, "filtered_items": filtered, "engine_trace": [trace]}
 
 
 def validator_node(state: dict[str, Any]) -> dict[str, Any]:
     agent = ValidatorAgent()
-    merged = state.get("merged", [])
+    items = list(state.get("merged", [])) + list(state.get("filtered_items", []))
     if state.get("engine_switch") == "llm":
         try:
-            checked = agent.run_llm(merged, timeout=8)
+            checked = agent.run_llm(items, timeout=8)
             trace = _trace(agent.name, "llm", "ok", "LLM 校验完成")
         except Exception as exc:
-            checked = agent.run_rule(merged)
+            checked = agent.run_rule(items)
             trace = _trace(agent.name, "rule", "degraded", f"LLM 失败自动降级：{exc}")
     else:
-        checked = agent.run_rule(merged)
+        checked = agent.run_rule(items)
         trace = _trace(agent.name, "rule", "ok", "switch=rule")
     return {"checked": checked, "engine_trace": [trace]}
 

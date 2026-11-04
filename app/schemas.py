@@ -167,6 +167,8 @@ class CheckedItemOut(BaseModel):
     item_id: str = ""
     category: str = ""
     content: str = ""
+    source_user_ids: list[int] = Field(default_factory=list)
+    source_names: list[str] = Field(default_factory=list)
     issues: list[str] = Field(default_factory=list)
     suggestions: list[str] = Field(default_factory=list)
 

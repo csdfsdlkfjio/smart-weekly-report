@@ -832,6 +832,16 @@ textarea {
   font-size: 12px;
 }
 
+.issue-source {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 4px;
+  margin-top: 3px;
+}
+
 .issue-item p,
 .risk-item p {
   color: #475569;

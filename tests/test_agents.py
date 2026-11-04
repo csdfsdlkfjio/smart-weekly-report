@@ -81,17 +81,21 @@ def test_merger_preserves_conflicting_numbers_per_source():
     assert merged[0]["content"] == "完成护理质控检查（张医生 3 次，李医生 4 次）"
 
 
-def test_validator_flags_vague_expressions():
+def test_validator_flags_vague_expressions_and_keeps_sources():
     merged = [
         {
             "id": "1",
             "category": "done",
             "content": "日常工作正常开展",
+            "source_user_ids": [3],
+            "source_names": ["王医生"],
         },
         {
             "id": "2",
             "category": "done",
             "content": "完成护理质控检查 3 次",
+            "source_user_ids": [1],
+            "source_names": ["张医生"],
         },
     ]
 
@@ -99,6 +103,8 @@ def test_validator_flags_vague_expressions():
 
     assert len(checked) == 1
     assert checked[0]["item_id"] == "1"
+    assert checked[0]["source_user_ids"] == [3]
+    assert checked[0]["source_names"] == ["王医生"]
     assert any("空泛" in issue for issue in checked[0]["issues"])
     assert checked[0]["suggestions"]
 

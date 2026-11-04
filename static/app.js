@@ -588,11 +588,22 @@
     }
     container.innerHTML = items
       .map((item) => {
+        const sourceBadges = (item.source_names || [])
+          .map((name) => `<span class="source-badge">${escapeHtml(name)}</span>`)
+          .join("");
+        const sourceLine = sourceBadges
+          ? `<p class="issue-source">来源：${sourceBadges}</p>`
+          : '<p class="issue-source">来源：未记录</p>';
         const issues = (item.issues || []).map((issue) => `<p>· ${escapeHtml(issue)}</p>`).join("");
         const suggestions = (item.suggestions || [])
           .map((suggestion) => `<p>建议：${escapeHtml(suggestion)}</p>`)
           .join("");
-        return `<div class="issue-item"><strong>${escapeHtml(item.content || "")}</strong>${issues}${suggestions}</div>`;
+        return `<div class="issue-item">
+          <strong>${escapeHtml(item.content || "")}</strong>
+          ${sourceLine}
+          ${issues}
+          ${suggestions}
+        </div>`;
       })
       .join("");
   }

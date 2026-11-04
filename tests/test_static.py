@@ -46,6 +46,8 @@ def test_static_assets_are_served(client):
     assert "state.weeks.length > 1 ? 1 : 0" in js.text
     assert "/api/director/member-report/" in js.text
     assert "function renderReturnPreview(report)" in js.text
+    assert 'class="issue-source">来源：' in js.text
+    assert "item.source_names" in js.text
 
 
 def test_static_responses_are_not_cached(client):

@@ -43,6 +43,8 @@ class ValidatorAgent(BaseAgent):
                     "item_id": item.get("id", ""),
                     "category": category,
                     "content": content,
+                    "source_user_ids": list(item.get("source_user_ids") or []),
+                    "source_names": list(item.get("source_names") or []),
                     "issues": issues,
                     "suggestions": ["请补充数量、完成率或具体结果，避免使用空泛表述"],
                 }

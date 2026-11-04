@@ -58,6 +58,8 @@ def test_week1_aggregate_merges_nursing_items_with_rule_trace(client, session_fa
     ]
     assert vague_checked
     assert any("空泛" in issue for item in vague_checked for issue in item["issues"])
+    assert all(item["source_names"] for item in vague_checked)
+    assert all("王医生" in item["source_names"] for item in vague_checked)
 
     # A2：摘要为第三人称且不超过 150 字
     assert body["summary"]

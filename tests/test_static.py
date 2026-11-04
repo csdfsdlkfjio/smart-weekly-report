@@ -11,7 +11,21 @@ def test_index_page_is_served_at_root(client):
     assert "/static/app.js" in body
     assert "/static/style.css" in body
     assert 'data-username="director"' in body
-    assert 'id="engine-switch"' in body
+    for element_id in (
+        "engine-switch",
+        "member-save",
+        "member-submit",
+        "director-items",
+        "add-item-btn",
+        "director-checked",
+        "director-risks",
+        "trace-badges",
+        "leader-week",
+        "leader-dept",
+        "leader-reports",
+        "modal-reason",
+    ):
+        assert f'id="{element_id}"' in body
 
 
 def test_static_assets_are_served(client):
@@ -28,3 +42,10 @@ def test_static_assets_are_served(client):
 def test_health_and_docs_still_work(client):
     assert client.get("/api/health").json() == {"status": "ok"}
     assert client.get("/docs").status_code == 200
+
+
+def test_departments_endpoint_for_leader_filter(client, seed, login):
+    response = client.get("/api/departments", headers=login("leader"))
+
+    assert response.status_code == 200
+    assert {item["name"] for item in response.json()} == {"心内科", "骨科"}

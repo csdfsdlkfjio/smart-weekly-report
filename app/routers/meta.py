@@ -22,3 +22,14 @@ def list_weeks(
     db: Session = Depends(get_db),
 ) -> list[schemas.WeekOut]:
     return [schemas.WeekOut.model_validate(week) for week in report_service.list_weeks(db)]
+
+
+@router.get("/departments", response_model=list[schemas.DepartmentOut])
+def list_departments(
+    _current_user: CurrentUser,
+    db: Session = Depends(get_db),
+) -> list[schemas.DepartmentOut]:
+    return [
+        schemas.DepartmentOut.model_validate(department)
+        for department in report_service.list_departments(db)
+    ]

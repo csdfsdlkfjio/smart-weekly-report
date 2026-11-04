@@ -204,6 +204,18 @@
           <div class="merged-items" id="director-items">
             <p class="empty">尚未汇总</p>
           </div>
+          <div class="add-item-row hidden" id="add-item-row">
+            <select id="add-item-category">
+              <option value="done">本周完成</option>
+              <option value="plan">下周计划</option>
+              <option value="issue">存在问题</option>
+              <option value="coord">需协调</option>
+            </select>
+            <input id="add-item-content" maxlength="300" placeholder="输入新条目内容">
+            <button class="btn btn-primary btn-small" id="add-item-confirm" type="button">添加</button>
+            <button class="btn btn-ghost btn-small" id="add-item-cancel" type="button">取消</button>
+          </div>
+          <button class="btn btn-ghost btn-small add-item-btn" id="add-item-btn" type="button">+ 添加条目</button>
         </section>
 
         <div class="two-col">

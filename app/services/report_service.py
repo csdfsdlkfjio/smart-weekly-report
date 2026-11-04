@@ -828,3 +828,7 @@ def get_timeline(
 
 def list_weeks(db: Session) -> list[models.Week]:
     return list(db.scalars(select(models.Week).order_by(models.Week.week_no.desc())))
+
+
+def list_departments(db: Session) -> list[models.Department]:
+    return list(db.scalars(select(models.Department).order_by(models.Department.name)))

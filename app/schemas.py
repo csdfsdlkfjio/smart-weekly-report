@@ -41,6 +41,13 @@ class WeekOut(BaseModel):
     deadline: datetime
 
 
+class DepartmentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+
+
 class ReportItems(BaseModel):
     done: list[str] = Field(default_factory=list)
     plan: list[str] = Field(default_factory=list)

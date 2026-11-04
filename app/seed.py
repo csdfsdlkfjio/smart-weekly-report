@@ -1,7 +1,8 @@
 """演示数据种子：幂等，可重复执行。
 
 用法：
-    python -m app.seed
+    python -m app.seed            # 幂等灌入，已有数据不重复插入
+    python -m app.seed --reset    # 先清空全部表，再重新灌入
 
 也可随应用启动自动执行（见 app/main.py 的 lifespan）。
 
@@ -24,7 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import auth, models
-from app.db import SessionLocal, init_db
+from app.db import Base, SessionLocal, init_db
 
 DEPT_NAME = "心内科"
 DEMO_PASSWORD = "demo123"
@@ -44,14 +45,14 @@ DEMO_USERS: tuple[tuple[str, str, str, bool], ...] = (
 DEMO_WEEKS: tuple[dict[str, Any], ...] = (
     {
         "week_no": 1,
-        "start_date": date(2026, 10, 20),
-        "end_date": date(2026, 10, 26),
+        "start_date": date(2026, 10, 19),
+        "end_date": date(2026, 10, 25),
         "deadline": datetime(2026, 10, 27, 23, 59),
     },
     {
         "week_no": 2,
-        "start_date": date(2026, 10, 27),
-        "end_date": date(2026, 11, 2),
+        "start_date": date(2026, 10, 26),
+        "end_date": date(2026, 11, 1),
         "deadline": datetime(2026, 11, 3, 23, 59),
     },
 )
@@ -258,6 +259,22 @@ def seed_demo_data(db: Session | None = None) -> dict[str, Any]:
             session.close()
 
 
+def reset_all_data(db: Session | None = None) -> None:
+    """清空所有业务表（用于演示数据彻底重置，无需删除数据库文件）。"""
+    own_session = db is None
+    session = db or SessionLocal()
+    try:
+        for table in reversed(Base.metadata.sorted_tables):
+            session.execute(table.delete())
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        if own_session:
+            session.close()
+
+
 def main() -> None:
     # Windows 下输出到管道时默认可能是 GBK，统一为 UTF-8 避免中文乱码。
     if hasattr(sys.stdout, "reconfigure"):
@@ -266,6 +283,9 @@ def main() -> None:
         except (OSError, ValueError):
             pass
     init_db()
+    if "--reset" in sys.argv[1:]:
+        reset_all_data()
+        print("[seed] 已清空现有数据，准备重新灌入")
     result = seed_demo_data()
     created = result["created"]
     print("[seed] 演示数据已就绪（幂等，可重复执行）")

@@ -1,9 +1,11 @@
 """演示数据（M7）测试：规模、埋点数据、幂等性与登录联调。"""
 
+from datetime import date, datetime
+
 from sqlalchemy import func, select
 
 from app import models
-from app.seed import DEMO_PASSWORD, seed_demo_data
+from app.seed import DEMO_PASSWORD, reset_all_data, seed_demo_data
 
 
 def test_seed_dataset_and_idempotency(session_factory):
@@ -43,11 +45,25 @@ def test_seed_dataset_and_idempotency(session_factory):
         assert [week.week_no for week in weeks] == [1, 2]
         week1, week2 = weeks
 
+        # 周次必须是周一至周日
+        assert week1.start_date == date(2026, 10, 19)
+        assert week1.end_date == date(2026, 10, 25)
+        assert week1.start_date.weekday() == 0
+        assert week1.end_date.weekday() == 6
+
+        assert week2.start_date == date(2026, 10, 26)
+        assert week2.end_date == date(2026, 11, 1)
+        assert week2.start_date.weekday() == 0
+        assert week2.end_date.weekday() == 6
+
         week1_reports = list(
             db.scalars(select(models.MemberReport).where(models.MemberReport.week_id == week1.id))
         )
         assert len(week1_reports) == 5
         assert all(report.status == "已提交" for report in week1_reports)
+        assert all(
+            report.submitted_at == datetime(2026, 10, 25, 18, 0) for report in week1_reports
+        )
 
         week2_reports = list(
             db.scalars(select(models.MemberReport).where(models.MemberReport.week_id == week2.id))
@@ -96,6 +112,26 @@ def test_seed_dataset_and_idempotency(session_factory):
             )
             == 9
         )
+    finally:
+        db.close()
+
+
+def test_reset_then_reseed_restores_correct_week_dates(session_factory):
+    db = session_factory()
+    try:
+        seed_demo_data(db)
+        reset_all_data(db)
+
+        assert db.scalar(select(func.count()).select_from(models.User)) == 0
+        assert db.scalar(select(func.count()).select_from(models.Week)) == 0
+        assert db.scalar(select(func.count()).select_from(models.MemberReport)) == 0
+
+        seed_demo_data(db)
+        weeks = list(db.scalars(select(models.Week).order_by(models.Week.week_no)))
+        assert [(week.start_date, week.end_date) for week in weeks] == [
+            (date(2026, 10, 19), date(2026, 10, 25)),
+            (date(2026, 10, 26), date(2026, 11, 1)),
+        ]
     finally:
         db.close()
 

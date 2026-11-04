@@ -15,7 +15,7 @@ def test_seed_dataset_and_idempotency(session_factory):
         second = seed_demo_data(db)
 
         assert first["created"]["users"] == 8
-        assert first["created"]["weeks"] == 2
+        assert first["created"]["weeks"] == 3
         assert first["created"]["member_reports"] == 9
         assert first["created"]["versions"] == 9
         assert first["created"]["audit_logs"] == 9
@@ -42,8 +42,8 @@ def test_seed_dataset_and_idempotency(session_factory):
         assert len(members) == 5
 
         weeks = list(db.scalars(select(models.Week).order_by(models.Week.week_no)))
-        assert [week.week_no for week in weeks] == [1, 2]
-        week1, week2 = weeks
+        assert [week.week_no for week in weeks] == [1, 2, 3]
+        week1, week2, week3 = weeks
 
         # 周次必须是周一至周日
         assert week1.start_date == date(2026, 10, 19)
@@ -55,6 +55,20 @@ def test_seed_dataset_and_idempotency(session_factory):
         assert week2.end_date == date(2026, 11, 1)
         assert week2.start_date.weekday() == 0
         assert week2.end_date.weekday() == 6
+
+        # 第 3 周为空白周，不预置任何成员报告
+        assert week3.start_date == date(2026, 11, 2)
+        assert week3.end_date == date(2026, 11, 8)
+        assert week3.start_date.weekday() == 0
+        assert week3.end_date.weekday() == 6
+        assert (
+            db.scalar(
+                select(func.count())
+                .select_from(models.MemberReport)
+                .where(models.MemberReport.week_id == week3.id)
+            )
+            == 0
+        )
 
         week1_reports = list(
             db.scalars(select(models.MemberReport).where(models.MemberReport.week_id == week1.id))
@@ -131,6 +145,7 @@ def test_reset_then_reseed_restores_correct_week_dates(session_factory):
         assert [(week.start_date, week.end_date) for week in weeks] == [
             (date(2026, 10, 19), date(2026, 10, 25)),
             (date(2026, 10, 26), date(2026, 11, 1)),
+            (date(2026, 11, 2), date(2026, 11, 8)),
         ]
     finally:
         db.close()

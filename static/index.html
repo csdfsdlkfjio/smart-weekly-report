@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智能周报系统</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar hidden" id="topbar">
+    <div class="brand">
+      <span class="brand-mark">周</span>
+      <span class="brand-text">
+        <strong>智能周报系统</strong>
+        <small>科室周报自动汇总与上报</small>
+      </span>
+    </div>
+    <div class="topbar-right">
+      <div class="user-meta">
+        <span class="user-name" id="current-user-name"></span>
+        <span class="role-badge" id="current-role"></span>
+      </div>
+      <button class="btn btn-ghost btn-small" id="logout-btn" type="button">退出登录</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <!-- 登录 -->
+    <section class="view active" id="view-login">
+      <div class="login-wrap">
+        <div class="login-card">
+          <div class="login-head">
+            <span class="brand-mark brand-mark-lg">周</span>
+            <h1>智能周报系统</h1>
+            <p>成员填报 · 智能汇总 · 主任审定 · 院领导查阅</p>
+          </div>
+
+          <form class="login-form" id="login-form" novalidate>
+            <label class="field">
+              <span>用户名</span>
+              <input id="login-username" autocomplete="username" placeholder="请输入用户名" required>
+            </label>
+            <label class="field">
+              <span>密码</span>
+              <input id="login-password" type="password" autocomplete="current-password" placeholder="请输入密码" required>
+            </label>
+            <p class="form-error hidden" id="login-error"></p>
+            <button class="btn btn-primary btn-block" id="login-btn" type="submit">登 录</button>
+          </form>
+
+          <div class="demo-accounts">
+            <p class="demo-title">演示账号 · 点击卡片直接登录（密码均为 demo123）</p>
+            <div class="account-chips">
+              <button class="account-chip" type="button" data-username="member_a">
+                <strong>成员A</strong><span>member_a</span>
+              </button>
+              <button class="account-chip" type="button" data-username="member_b">
+                <strong>成员B</strong><span>member_b</span>
+              </button>
+              <button class="account-chip" type="button" data-username="member_c">
+                <strong>成员C</strong><span>member_c</span>
+              </button>
+              <button class="account-chip" type="button" data-username="member_d">
+                <strong>成员D（未交）</strong><span>member_d</span>
+              </button>
+              <button class="account-chip account-chip-accent" type="button" data-username="director">
+                <strong>科室主任</strong><span>director</span>
+              </button>
+              <button class="account-chip account-chip-accent" type="button" data-username="leader">
+                <strong>院领导</strong><span>leader</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <p class="login-foot">河南科技大学第一附属医院 · 互联网医院</p>
+      </div>
+    </section>
+
+    <!-- 成员填报 -->
+    <section class="view" id="view-member">
+      <div class="page-head">
+        <div>
+          <h2>成员填报</h2>
+          <p class="muted">按周填写四类事项；保存草稿后可修改，提交后锁定</p>
+        </div>
+        <div class="page-tools">
+          <label class="field-inline">
+            <span>周次</span>
+            <select id="member-week" data-week-select></select>
+          </label>
+          <span class="status-badge" id="member-status">未填写</span>
+        </div>
+      </div>
+
+      <div class="alert alert-danger hidden" id="member-return-banner">
+        <strong>周报被退回，请修改后重新提交</strong>
+        <p id="member-return-reason"></p>
+      </div>
+
+      <div class="card" id="member-editor">
+        <div class="editor">
+          <section class="entry-group" data-category="done">
+            <div class="entry-head">
+              <h3>本周完成工作</h3>
+              <button class="btn btn-ghost btn-small" type="button" data-add-row="done">+ 添加一条</button>
+            </div>
+            <div class="entry-rows" id="rows-done"></div>
+          </section>
+          <section class="entry-group" data-category="plan">
+            <div class="entry-head">
+              <h3>下周工作计划</h3>
+              <button class="btn btn-ghost btn-small" type="button" data-add-row="plan">+ 添加一条</button>
+            </div>
+            <div class="entry-rows" id="rows-plan"></div>
+          </section>
+          <section class="entry-group" data-category="issue">
+            <div class="entry-head">
+              <h3>存在问题</h3>
+              <button class="btn btn-ghost btn-small" type="button" data-add-row="issue">+ 添加一条</button>
+            </div>
+            <div class="entry-rows" id="rows-issue"></div>
+          </section>
+          <section class="entry-group" data-category="coord">
+            <div class="entry-head">
+              <h3>需协调事项</h3>
+              <button class="btn btn-ghost btn-small" type="button" data-add-row="coord">+ 添加一条</button>
+            </div>
+            <div class="entry-rows" id="rows-coord"></div>
+          </section>
+        </div>
+        <div class="card-actions">
+          <span class="muted" id="member-hint">提交后内容锁定，主任退回后可再次编辑</span>
+          <div class="action-buttons">
+            <button class="btn btn-secondary" id="member-save" type="button">保存草稿</button>
+            <button class="btn btn-primary" id="member-submit" type="button">提交周报</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 主任看板与汇总 -->
+    <section class="view" id="view-director">
+      <div class="page-head">
+        <div>
+          <h2>主任看板</h2>
+          <p class="muted">查看提交情况，一键智能汇总，编辑定稿后上报</p>
+        </div>
+        <div class="page-tools">
+          <label class="field-inline">
+            <span>周次</span>
+            <select id="director-week" data-week-select></select>
+          </label>
+          <span class="status-badge" id="director-status">未汇总</span>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <span class="stat-label">已提交</span>
+          <strong class="stat-value stat-success" id="stat-submitted">-</strong>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">未提交</span>
+          <strong class="stat-value stat-danger" id="stat-missing">-</strong>
+        </div>
+        <div class="stat-card stat-wide">
+          <span class="stat-label">未交人员</span>
+          <strong class="stat-names" id="stat-missing-names">-</strong>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>成员提交情况</h3>
+          <div class="head-actions">
+            <div class="engine-control">
+              <span class="engine-label">AI 引擎</span>
+              <div class="segmented" id="engine-switch" role="group" aria-label="AI 引擎切换">
+                <button type="button" data-engine="llm">大模型</button>
+                <button type="button" data-engine="rule" class="active">规则（兜底）</button>
+              </div>
+            </div>
+            <button class="btn btn-primary" id="aggregate-btn" type="button">一键汇总</button>
+          </div>
+        </div>
+        <div class="overview-grid" id="overview-list">
+          <p class="empty">提交看板将在下一阶段接入</p>
+        </div>
+      </div>
+
+      <div class="card" id="aggregate-card">
+        <div class="card-head">
+          <h3>汇总稿</h3>
+          <div class="trace-badges" id="trace-badges"></div>
+        </div>
+
+        <section class="summary-block">
+          <h4>科室摘要（A2）</h4>
+          <p class="summary-text empty" id="director-summary">尚未汇总</p>
+        </section>
+
+        <section class="items-block">
+          <h4>归并条目（A1）<span class="hint">双击内容可编辑，来源人员以徽章标注</span></h4>
+          <div class="merged-items" id="director-items">
+            <p class="empty">尚未汇总</p>
+          </div>
+        </section>
+
+        <div class="two-col">
+          <section>
+            <h4>规范校验建议（A3）</h4>
+            <div class="issue-list" id="director-checked">
+              <p class="empty">暂无</p>
+            </div>
+          </section>
+          <section>
+            <h4>风险提示（A4）</h4>
+            <div class="risk-list" id="director-risks">
+              <p class="empty">暂无</p>
+            </div>
+          </section>
+        </div>
+
+        <div class="card-actions">
+          <span class="muted" id="director-hint"></span>
+          <div class="action-buttons">
+            <button class="btn btn-secondary" id="finalize-btn" type="button">定稿</button>
+            <button class="btn btn-primary" id="report-btn" type="button">上报院领导</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 院领导查阅 -->
+    <section class="view" id="view-leader">
+      <div class="page-head">
+        <div>
+          <h2>院领导查阅</h2>
+          <p class="muted">按周次与科室筛选已上报周报，内容只读</p>
+        </div>
+        <div class="page-tools">
+          <label class="field-inline">
+            <span>周次</span>
+            <select id="leader-week" data-week-select><option value="">全部周次</option></select>
+          </label>
+          <label class="field-inline">
+            <span>科室</span>
+            <select id="leader-dept"><option value="">全部科室</option></select>
+          </label>
+        </div>
+      </div>
+      <div class="leader-reports" id="leader-reports">
+        <p class="empty">查阅列表将在下一阶段接入</p>
+      </div>
+    </section>
+
+    <!-- 管理员占位 -->
+    <section class="view" id="view-admin">
+      <div class="card narrow-card">
+        <h2>管理员账号</h2>
+        <p class="muted">MVP 暂未提供科室/人员/周次维护界面，管理员仅用于数据维护。</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- 退回理由弹窗 -->
+  <div class="modal-backdrop hidden" id="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <h3 id="modal-title">退回成员周报</h3>
+      <p class="muted" id="modal-subtitle"></p>
+      <label class="field">
+        <span>退回理由</span>
+        <textarea id="modal-reason" rows="4" maxlength="500" placeholder="请说明需要补充或修改的内容"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="modal-cancel" type="button">取消</button>
+        <button class="btn btn-danger" id="modal-confirm" type="button">确认退回</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

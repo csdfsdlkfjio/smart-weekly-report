@@ -8,15 +8,19 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app import config
 from app.db import init_db
 from app.exceptions import AppError
 from app.routers import audit, auth, director, leader, member, meta
 from app.seed import seed_demo_data
+
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 
 @asynccontextmanager
@@ -49,8 +53,8 @@ def health() -> dict[str, str]:
 
 
 @app.get("/", include_in_schema=False)
-def root() -> dict[str, str]:
-    return {"name": "智能周报系统", "docs": "/docs", "health": "/api/health"}
+def index() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 app.include_router(auth.router)
@@ -59,3 +63,6 @@ app.include_router(member.router)
 app.include_router(director.router)
 app.include_router(leader.router)
 app.include_router(audit.router)
+
+# 前端静态资源：/static/style.css、/static/app.js 等
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

@@ -1,0 +1,30 @@
+"""静态页面与挂载测试。"""
+
+
+def test_index_page_is_served_at_root(client):
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    body = response.text
+    assert "智能周报系统" in body
+    assert "/static/app.js" in body
+    assert "/static/style.css" in body
+    assert 'data-username="director"' in body
+    assert 'id="engine-switch"' in body
+
+
+def test_static_assets_are_served(client):
+    css = client.get("/static/style.css")
+    assert css.status_code == 200
+    assert "text/css" in css.headers["content-type"]
+
+    js = client.get("/static/app.js")
+    assert js.status_code == 200
+    assert "javascript" in js.headers["content-type"]
+    assert "swr_token" in js.text
+
+
+def test_health_and_docs_still_work(client):
+    assert client.get("/api/health").json() == {"status": "ok"}
+    assert client.get("/docs").status_code == 200

@@ -131,6 +131,9 @@ class DeptReport(Base):
     # [{id, category, content, source_user_ids, source_names, sort_order, edited_by}]
     items: Mapped[list[dict]] = mapped_column(JSON, default=list, nullable=False)
 
+    # Agent 产出：{"checked": [...], "risks": [...], "engine_trace": [...]}
+    meta_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+
     finalized_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     reported_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)

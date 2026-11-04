@@ -32,7 +32,9 @@ def aggregate(
     current_user: DirectorUser,
     db: Session = Depends(get_db),
 ) -> schemas.DeptReportOut:
-    report = report_service.aggregate_dept_report(db, current_user, payload.week_id)
+    report = report_service.aggregate_dept_report(
+        db, current_user, payload.week_id, payload.engine_switch
+    )
     return schemas.DeptReportOut.from_model(report)
 
 

@@ -146,6 +146,31 @@ class ReturnMemberRequest(BaseModel):
 
 class AggregateRequest(BaseModel):
     week_id: int
+    engine_switch: Literal["rule", "llm"] = "rule"
+
+
+class EngineTraceOut(BaseModel):
+    agent: str
+    engine: str
+    status: str
+    detail: str = ""
+
+
+class CheckedItemOut(BaseModel):
+    item_id: str = ""
+    category: str = ""
+    content: str = ""
+    issues: list[str] = Field(default_factory=list)
+    suggestions: list[str] = Field(default_factory=list)
+
+
+class RiskOut(BaseModel):
+    type: str
+    level: str
+    user_id: int | None = None
+    username: str | None = None
+    user_name: str | None = None
+    detail: str
 
 
 class DeptReportOut(BaseModel):
@@ -155,6 +180,9 @@ class DeptReportOut(BaseModel):
     status: str
     summary: str
     items: list[DeptItemOut]
+    checked: list[CheckedItemOut] = Field(default_factory=list)
+    risks: list[RiskOut] = Field(default_factory=list)
+    engine_trace: list[EngineTraceOut] = Field(default_factory=list)
     finalized_at: datetime | None = None
     reported_at: datetime | None = None
     created_at: datetime
@@ -162,6 +190,7 @@ class DeptReportOut(BaseModel):
 
     @classmethod
     def from_model(cls, report) -> "DeptReportOut":
+        meta = report.meta_json or {}
         return cls(
             id=report.id,
             dept_id=report.dept_id,
@@ -169,6 +198,9 @@ class DeptReportOut(BaseModel):
             status=report.status,
             summary=report.summary or "",
             items=report.items or [],
+            checked=meta.get("checked", []),
+            risks=meta.get("risks", []),
+            engine_trace=meta.get("engine_trace", []),
             finalized_at=report.finalized_at,
             reported_at=report.reported_at,
             created_at=report.created_at,

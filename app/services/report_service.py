@@ -22,7 +22,7 @@ from app.exceptions import (
     ValidationError,
 )
 from app.models import DeptReportStatus, MemberReportStatus, Role
-from app.services import audit_service
+from app.services import ai_service, audit_service
 
 MEMBER_TRANSITIONS: dict[str, set[str]] = {
     MemberReportStatus.DRAFT.value: {MemberReportStatus.SUBMITTED.value},
@@ -371,50 +371,119 @@ def get_dept_report_for_week(
     )
 
 
-def _merge_items_exact(
+def _report_lists(report: models.MemberReport) -> dict[str, list[str]]:
+    return {
+        "done": [str(value) for value in (report.done_items or [])],
+        "plan": [str(value) for value in (report.plan_items or [])],
+        "issue": [str(value) for value in (report.issue_items or [])],
+        "coord": [str(value) for value in (report.coord_items or [])],
+    }
+
+
+def _build_raw_items(
     db: Session, reports: list[models.MemberReport]
 ) -> list[dict[str, Any]]:
-    """汇总占位实现：按“类别 + 完全相同的文本”合并来源。
-
-    真正的语义归并由第二阶段的 MergerAgent 替换；这里先保证主链路可跑通，
-    并保留 source_user_ids/source_names 结构。
-    """
-    merged: dict[tuple[str, str], dict[str, Any]] = {}
-    ordered: list[dict[str, Any]] = []
-
+    """把成员周报展开为 MergerAgent 需要的扁平条目。"""
+    raw_items: list[dict[str, Any]] = []
     for report in reports:
         member = db.get(models.User, report.user_id)
-        name = member.name if member else str(report.user_id)
+        user_name = member.name if member else str(report.user_id)
         for category, field in CATEGORY_FIELDS.items():
             for content in getattr(report, field) or []:
                 text = str(content).strip()
                 if not text:
                     continue
-                key = (category, " ".join(text.split()))
-                if key in merged:
-                    item = merged[key]
-                    item["source_user_ids"] = _dedupe(item["source_user_ids"] + [report.user_id])
-                    item["source_names"] = _dedupe(item["source_names"] + [name])
-                    continue
-                item = {
-                    "id": uuid4().hex,
-                    "category": category,
-                    "content": text,
-                    "source_user_ids": [report.user_id],
-                    "source_names": [name],
-                    "sort_order": len(ordered),
-                    "edited_by": None,
-                }
-                merged[key] = item
-                ordered.append(item)
+                raw_items.append(
+                    {
+                        "user_id": report.user_id,
+                        "user_name": user_name,
+                        "category": category,
+                        "content": text,
+                    }
+                )
+    return raw_items
 
-    return ordered
+
+def _build_risk_context(
+    db: Session,
+    dept_id: int,
+    week: models.Week,
+    reports: list[models.MemberReport],
+) -> dict[str, Any]:
+    """组装 RiskAgent 所需数据：成员提交状态 + 当周/上一周内容。"""
+    members = list(
+        db.scalars(
+            select(models.User)
+            .where(models.User.dept_id == dept_id, models.User.role == Role.MEMBER.value)
+            .order_by(models.User.username)
+        )
+    )
+    submitted_ids = {report.user_id for report in reports}
+
+    current_reports: list[dict[str, Any]] = []
+    for report in reports:
+        member = db.get(models.User, report.user_id)
+        if member is None:
+            continue
+        current_reports.append(
+            {
+                "user_id": report.user_id,
+                "username": member.username,
+                "name": member.name,
+                **_report_lists(report),
+            }
+        )
+
+    previous_week = db.scalar(
+        select(models.Week).where(models.Week.week_no == week.week_no - 1)
+    )
+    previous_reports: list[dict[str, Any]] = []
+    if previous_week is not None:
+        stmt = (
+            select(models.MemberReport)
+            .join(models.User, models.User.id == models.MemberReport.user_id)
+            .where(
+                models.User.dept_id == dept_id,
+                models.MemberReport.week_id == previous_week.id,
+                models.MemberReport.status == MemberReportStatus.SUBMITTED.value,
+            )
+        )
+        for report in db.scalars(stmt):
+            member = db.get(models.User, report.user_id)
+            if member is None:
+                continue
+            previous_reports.append(
+                {
+                    "user_id": report.user_id,
+                    "username": member.username,
+                    "name": member.name,
+                    **_report_lists(report),
+                }
+            )
+
+    return {
+        "week_no": week.week_no,
+        "members": [
+            {
+                "user_id": member.id,
+                "username": member.username,
+                "name": member.name,
+                "submitted": member.id in submitted_ids,
+            }
+            for member in members
+        ],
+        "current_reports": current_reports,
+        "previous_reports": previous_reports,
+    }
 
 
 def aggregate_dept_report(
-    db: Session, director: models.User, week_id: int
+    db: Session,
+    director: models.User,
+    week_id: int,
+    engine_switch: str = "rule",
 ) -> models.DeptReport:
-    """一键汇总：收集本周已提交周报，生成/重建科室汇总稿。"""
+    """一键汇总：调用 LangGraph 产出归并/校验/摘要/风险，并落库。"""
     dept_id = _director_dept_id(director)
     week = _get_week(db, week_id)
     existing = get_dept_report_for_week(db, director, week.id)
@@ -442,15 +511,29 @@ def aggregate_dept_report(
     if not reports:
         raise ValidationError("本科室本周暂无已提交的周报，无法汇总")
 
-    items = _merge_items_exact(db, reports)
+    ai_result = ai_service.run_aggregate(
+        dept_id=dept_id,
+        week_id=week.id,
+        raw_items=_build_raw_items(db, reports),
+        risk_context=_build_risk_context(db, dept_id, week, reports),
+        engine_switch=engine_switch,
+    )
+    items = ai_result["merged"]
+    summary = ai_result["summary"]
+    meta = {
+        "checked": ai_result["checked"],
+        "risks": ai_result["risks"],
+        "engine_trace": ai_result["engine_trace"],
+    }
 
     if existing is None:
         report = models.DeptReport(
             dept_id=dept_id,
             week_id=week.id,
             status=DeptReportStatus.AGGREGATED.value,
-            summary="",
+            summary=summary,
             items=items,
+            meta_json=meta,
         )
         db.add(report)
         db.flush()
@@ -463,6 +546,7 @@ def aggregate_dept_report(
             before=None,
             after={
                 "status": DeptReportStatus.AGGREGATED.value,
+                "engine_switch": engine_switch,
                 "member_report_count": len(reports),
                 "item_count": len(items),
             },
@@ -475,9 +559,15 @@ def aggregate_dept_report(
             DeptReportStatus.AGGREGATED.value,
             director,
             "reaggregate",
-            {"member_report_count": len(reports), "item_count": len(items)},
+            {
+                "engine_switch": engine_switch,
+                "member_report_count": len(reports),
+                "item_count": len(items),
+            },
         )
         report.items = items
+        report.summary = summary
+        report.meta_json = meta
         report.finalized_at = None
         report.reported_at = None
 

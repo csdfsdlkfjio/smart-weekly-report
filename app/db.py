@@ -45,6 +45,22 @@ def init_db() -> None:
     if config.DATABASE_URL.startswith("sqlite"):
         config.DATA_DIR.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(bind=engine)
+    _migrate_sqlite_dept_report_meta()
+
+
+def _migrate_sqlite_dept_report_meta() -> None:
+    """为已存在的 SQLite 库补上 meta_json 列（create_all 不会改旧表）。"""
+    if not config.DATABASE_URL.startswith("sqlite"):
+        return
+    with engine.begin() as connection:
+        columns = {
+            row[1]
+            for row in connection.exec_driver_sql("PRAGMA table_info(dept_reports)").fetchall()
+        }
+        if columns and "meta_json" not in columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE dept_reports ADD COLUMN meta_json JSON NOT NULL DEFAULT '{}'"
+            )
 
 
 def get_db() -> Generator[Session, None, None]:

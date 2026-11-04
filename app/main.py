@@ -53,6 +53,15 @@ app = FastAPI(
 )
 
 
+@app.middleware("http")
+async def disable_static_cache(request: Request, call_next):
+    """本地演示时避免浏览器缓存旧版 HTML/JS/CSS。"""
+    response = await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+    return response
+
+
 @app.exception_handler(AppError)
 async def app_error_handler(_request: Request, exc: AppError) -> JSONResponse:
     return JSONResponse(

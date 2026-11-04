@@ -8,8 +8,8 @@ def test_index_page_is_served_at_root(client):
     assert response.headers["content-type"].startswith("text/html")
     body = response.text
     assert "智能周报系统" in body
-    assert "/static/app.js" in body
-    assert "/static/style.css" in body
+    assert "/static/app.js?v=" in body
+    assert "/static/style.css?v=" in body
     assert 'data-username="director"' in body
     assert 'id="director-week" data-week-select data-default-week="previous"' in body
     for element_id in (
@@ -40,6 +40,16 @@ def test_static_assets_are_served(client):
     assert "swr_token" in js.text
     assert 'select.dataset.defaultWeek === "previous"' in js.text
     assert "index = preferPrevious && state.weeks.length > 1 ? 1 : 0" in js.text
+    assert "function applyDirectorDefaultWeek()" in js.text
+    assert "applyDirectorDefaultWeek();" in js.text
+    assert "state.weeks.length > 1 ? 1 : 0" in js.text
+
+
+def test_static_responses_are_not_cached(client):
+    for path in ("/", "/static/app.js", "/static/style.css"):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert "no-store" in response.headers.get("cache-control", "")
 
 
 def test_health_and_docs_still_work(client):

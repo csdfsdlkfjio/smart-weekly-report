@@ -196,6 +196,8 @@
       showView("view-member");
       await loadMemberView();
     } else if (user.role === "director") {
+      // 主任登录后显式落到上一周，避免依赖下拉框的初始化时序
+      applyDirectorDefaultWeek();
       showView("view-director");
       await loadDirectorView();
     } else if (user.role === "leader") {
@@ -228,6 +230,14 @@
     clearSession();
     showLogin();
     showToast("已退出登录", "info");
+  }
+
+  function applyDirectorDefaultWeek() {
+    const select = $("#director-week");
+    if (!select || !state.weeks.length) return;
+    // 周次接口按新→旧返回；主任默认上一周，没有上一周时退回最新周
+    const index = state.weeks.length > 1 ? 1 : 0;
+    select.value = String(state.weeks[index].id);
   }
 
   async function loadWeeks() {

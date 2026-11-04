@@ -66,6 +66,19 @@ def test_merger_merges_spot_check_and_self_check_variants():
     assert len(merged) == 1
     assert merged[0]["source_user_ids"] == [1, 2]
     assert merged[0]["source_names"] == ["张医生", "李医生"]
+    assert merged[0]["content"] == "完成护理质控检查（张医生 3 次，李医生自查）"
+
+
+def test_merger_preserves_conflicting_numbers_per_source():
+    raw_items = [
+        {"user_id": 1, "user_name": "张医生", "category": "done", "content": "完成护理质控抽查 3 次"},
+        {"user_id": 2, "user_name": "李医生", "category": "done", "content": "完成护理质控自查 4 次"},
+    ]
+
+    merged = MergerAgent().run_rule(raw_items)
+
+    assert len(merged) == 1
+    assert merged[0]["content"] == "完成护理质控检查（张医生 3 次，李医生 4 次）"
 
 
 def test_validator_flags_vague_expressions():

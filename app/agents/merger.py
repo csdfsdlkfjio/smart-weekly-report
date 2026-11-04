@@ -72,8 +72,8 @@ def _load_synonyms() -> dict[str, str]:
 _SYNONYMS = _load_synonyms()
 
 
-def tokens(text: str) -> list[str]:
-    """分词并归一化；返回去重后的词列表。"""
+def tokens(text: str, unique: bool = True) -> list[str]:
+    """分词并归一化；unique=False 时保留词序与重复词。"""
     cleaned = _PUNCT_RE.sub("", str(text))
     if not cleaned:
         return []
@@ -84,7 +84,111 @@ def tokens(text: str) -> list[str]:
             continue
         token = _SYNONYMS.get(token, token)
         result.append(token)
-    return list(dict.fromkeys(result))
+    return list(dict.fromkeys(result)) if unique else result
+
+
+def _raw_tokens(text: str) -> list[str]:
+    """分词但保留原始措辞（不做同义词归一），用于生成来源区分词。"""
+    cleaned = _PUNCT_RE.sub("", str(text))
+    result: list[str] = []
+    for token in jieba.lcut(cleaned):
+        token = token.strip()
+        if token and token not in STOPWORDS:
+            result.append(token)
+    return result
+
+
+_NUMBER_RE = re.compile(
+    r"\d+(?:\.\d+)?%?\s*(?:次|份|人|例|项|天|台|个|周|月|年|条|小时|分钟)?"
+)
+
+_QUANTITY_TOKENS = {"次", "份", "人", "例", "项", "天", "台", "个", "周", "月", "年", "条", "小时", "分钟"}
+
+
+def _is_quantity_token(token: str) -> bool:
+    return bool(re.fullmatch(r"\d+(?:\.\d+)?%?", token)) or token in _QUANTITY_TOKENS
+
+
+def _extract_numbers(text: str) -> list[str]:
+    numbers: list[str] = []
+    for match in _NUMBER_RE.finditer(str(text)):
+        value = re.sub(r"\s+", " ", match.group(0)).strip()
+        if value:
+            numbers.append(value)
+    return list(dict.fromkeys(numbers))
+
+
+def _base_description(source_details: list[dict[str, Any]]) -> str:
+    """取所有来源的公共词，按信息量最大的来源顺序拼出基础描述。"""
+    contents = [
+        str(detail.get("content", "")).strip()
+        for detail in source_details
+        if str(detail.get("content", "")).strip()
+    ]
+    if len(contents) < 2:
+        return ""
+
+    token_sets = [set(tokens(content)) for content in contents]
+    common = {token for token in set.intersection(*token_sets) if not _is_quantity_token(token)}
+    if not common:
+        return ""
+
+    order_source = max(contents, key=len)
+    ordered = [token for token in tokens(order_source, unique=False) if token in common]
+    ordered = list(dict.fromkeys(ordered))
+    base = "".join(ordered)
+    return base if len(base) >= 4 else ""
+
+
+def _variant_details(text: str, base_tokens: set[str]) -> list[str]:
+    """提取某来源相对基础描述的区别词，如“自查”。"""
+    details: list[str] = []
+    for token in _raw_tokens(text):
+        if _is_quantity_token(token):
+            continue
+        canonical = _SYNONYMS.get(token, token)
+        if canonical in base_tokens:
+            # 同义变体保留原措辞（自查/抽查/核查），普通公共词跳过
+            if token != canonical:
+                details.append(token)
+            continue
+        details.append(token)
+    return list(dict.fromkeys(details))
+
+
+def _has_numeric_conflict(source_details: list[dict[str, Any]]) -> bool:
+    number_lists = [_extract_numbers(detail.get("content", "")) for detail in source_details]
+    if not any(number_lists):
+        return False
+    if any(not numbers for numbers in number_lists):
+        return True
+    return len({tuple(numbers) for numbers in number_lists}) > 1
+
+
+def _apply_numeric_conflict(item: dict[str, Any]) -> None:
+    """数字存在缺失或冲突时，保留每个来源的量化/区分信息。"""
+    source_details = item.get("source_details") or []
+    if len(source_details) < 2 or not _has_numeric_conflict(source_details):
+        return
+
+    base = _base_description(source_details)
+    if not base:
+        return
+
+    base_tokens = set(tokens(base))
+    parts: list[str] = []
+    for detail in source_details:
+        content = str(detail.get("content", "")).strip()
+        name = str(detail.get("user_name", detail.get("user_id", "")))
+        numbers = _extract_numbers(content)
+        if numbers:
+            parts.append(f"{name} {'、'.join(numbers)}")
+        else:
+            variants = _variant_details(content, base_tokens)
+            suffix = "".join(variants) if variants else "未注明次数"
+            parts.append(f"{name}{suffix}")
+
+    item["content"] = f"{base}（{'，'.join(parts)}）"
 
 
 def text_similarity(left: str, right: str) -> float:
@@ -176,19 +280,32 @@ class MergerAgent(BaseAgent):
                         "source_names": [user_name],
                         "sort_order": 0,
                         "edited_by": None,
+                        "source_details": [
+                            {"user_id": user_id, "user_name": user_name, "content": content}
+                        ],
                     }
                 )
                 continue
 
             target["source_user_ids"] = list(dict.fromkeys(target["source_user_ids"] + [user_id]))
             target["source_names"] = list(dict.fromkeys(target["source_names"] + [user_name]))
-            # 保留信息量更大的表述
+            source_details = target.setdefault("source_details", [])
+            if not any(
+                detail["user_id"] == user_id and detail["content"] == content
+                for detail in source_details
+            ):
+                source_details.append(
+                    {"user_id": user_id, "user_name": user_name, "content": content}
+                )
+            # 无障碍时保留信息量更大的表述；数字冲突时最终会改写成带来源明细的描述
             if len(content) > len(target["content"]):
                 target["content"] = content
 
         merged: list[dict[str, Any]] = []
         for category in CATEGORY_ORDER:
             for item in clusters[category]:
+                _apply_numeric_conflict(item)
+                item.pop("source_details", None)
                 item["sort_order"] = len(merged)
                 merged.append(item)
         return {"items": merged, "filtered": filtered}

@@ -91,7 +91,7 @@ def test_week2_aggregate_reports_missing_member_and_cross_week_risks(client, ses
         and "李医生" in item["source_names"]
     ]
     assert len(merged_nursing) == 1
-    assert "护理质控" in merged_nursing[0]["content"]
+    assert merged_nursing[0]["content"] == "完成护理质控检查（张医生 3 次，李医生自查）"
 
     missing = [
         risk

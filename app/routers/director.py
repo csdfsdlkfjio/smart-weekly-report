@@ -38,6 +38,16 @@ def aggregate(
     return schemas.DeptReportOut.from_model(report)
 
 
+@router.get("/member-report/{member_report_id}", response_model=schemas.MemberReportOut)
+def get_member_report(
+    member_report_id: int,
+    current_user: DirectorUser,
+    db: Session = Depends(get_db),
+) -> schemas.MemberReportOut:
+    report = report_service.get_member_report_for_director(db, current_user, member_report_id)
+    return schemas.MemberReportOut.from_model(report)
+
+
 @router.get("/dept-report", response_model=schemas.DeptReportOut | None)
 def get_dept_report(
     current_user: DirectorUser,

@@ -9,6 +9,12 @@
   const CATEGORY_LABELS = { done: "完成", plan: "计划", issue: "问题", coord: "协调" };
   const AGENT_LABELS = { merger: "归并", validator: "校验", summarizer: "摘要", risk: "风险" };
   const ENGINE_LABELS = { llm: "大模型", rule: "规则引擎" };
+  const MEMBER_CATEGORY_LABELS = {
+    done: "本周完成工作",
+    plan: "下周工作计划",
+    issue: "存在问题",
+    coord: "需协调事项",
+  };
   const RISK_LABELS = {
     missing_submission: "未提交",
     unclosed_coord: "协调超期未闭环",
@@ -815,17 +821,56 @@
     closeAddItemRow();
   }
 
-  function openReturnModal(memberReportId, memberName) {
+  function renderReturnPreview(report) {
+    const groups = CATEGORIES.map((category) => {
+      const items = report[category] || [];
+      const body = items.length
+        ? `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+        : '<p class="return-preview-empty">（未填写）</p>';
+      return `<section class="return-preview-group">
+        <h4>${MEMBER_CATEGORY_LABELS[category]}</h4>
+        ${body}
+      </section>`;
+    }).join("");
+
+    const submitted = report.submitted_at
+      ? ` · 提交于 ${formatTime(report.submitted_at)}`
+      : "";
+    const meta = `状态：${escapeHtml(report.status)} · 版本 v${report.version}${submitted}`;
+    $("#return-preview").innerHTML = `<p class="return-preview-meta">${meta}</p>${groups}`;
+  }
+
+  async function openReturnModal(memberReportId, memberName) {
     const report = state.director.report;
     if (!report || report.status !== "已汇总") {
       showToast("请先汇总后再退回成员周报", "error");
       return;
     }
-    pendingReturn = { deptReportId: report.id, memberReportId, memberName };
+
+    const request = { deptReportId: report.id, memberReportId, memberName };
+    pendingReturn = request;
     $("#modal-subtitle").textContent = `将退回 ${memberName} 的周报，成员修改后可重新提交。`;
     $("#modal-reason").value = "";
+    $("#return-preview").innerHTML =
+      '<p class="return-preview-empty">正在加载成员原始周报...</p>';
+    $("#modal-confirm").disabled = true;
     $("#modal-backdrop").classList.remove("hidden");
-    $("#modal-reason").focus();
+
+    try {
+      const memberReport = await api(`/api/director/member-report/${memberReportId}`);
+      if (pendingReturn !== request) return; // 弹窗已关闭或切换
+      renderReturnPreview(memberReport);
+    } catch (error) {
+      if (pendingReturn !== request) return;
+      $("#return-preview").innerHTML =
+        `<p class="form-error">原始周报加载失败：${escapeHtml(error.message)}</p>`;
+      showToast(error.message, "error");
+    } finally {
+      if (pendingReturn === request) {
+        $("#modal-confirm").disabled = false;
+        $("#modal-reason").focus();
+      }
+    }
   }
 
   function closeReturnModal() {

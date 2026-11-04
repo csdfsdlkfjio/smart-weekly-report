@@ -12,6 +12,7 @@ def test_index_page_is_served_at_root(client):
     assert "/static/style.css?v=" in body
     assert 'data-username="director"' in body
     assert 'id="director-week" data-week-select data-default-week="previous"' in body
+    assert 'id="return-preview"' in body
     for element_id in (
         "engine-switch",
         "member-save",
@@ -43,6 +44,8 @@ def test_static_assets_are_served(client):
     assert "function applyDirectorDefaultWeek()" in js.text
     assert "applyDirectorDefaultWeek();" in js.text
     assert "state.weeks.length > 1 ? 1 : 0" in js.text
+    assert "/api/director/member-report/" in js.text
+    assert "function renderReturnPreview(report)" in js.text
 
 
 def test_static_responses_are_not_cached(client):

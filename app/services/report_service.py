@@ -358,6 +358,32 @@ def get_overview(db: Session, director: models.User, week_id: int) -> dict[str, 
     }
 
 
+def get_member_report_for_director(
+    db: Session, director: models.User, member_report_id: int
+) -> models.MemberReport:
+    """主任查看本科室成员周报正文（退回弹窗的只读预览）。"""
+    dept_id = _director_dept_id(director)
+    report = db.get(models.MemberReport, member_report_id)
+    if report is None:
+        raise NotFoundError("成员周报不存在")
+
+    member = db.get(models.User, report.user_id)
+    if member is None or member.dept_id != dept_id:
+        _log_forbidden(
+            db,
+            director,
+            entity_type="member_report",
+            entity_id=report.id,
+            detail={
+                "reason": "跨科室查看成员周报",
+                "target_dept_id": member.dept_id if member else None,
+                "own_dept_id": dept_id,
+            },
+        )
+        raise PermissionDenied("无权查看其他科室成员的周报")
+    return report
+
+
 def get_dept_report_for_week(
     db: Session, director: models.User, week_id: int
 ) -> models.DeptReport | None:

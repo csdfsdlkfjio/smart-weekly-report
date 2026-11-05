@@ -934,6 +934,9 @@ def get_timeline(
         if user.role == Role.DIRECTOR.value:
             if not user.dept_id or member is None or member.dept_id != user.dept_id:
                 raise PermissionDenied("无权查看其他科室的操作记录")
+        elif user.role == Role.MEMBER.value:
+            if report.user_id != user.id:
+                raise PermissionDenied("只能查看本人周报的操作记录")
         elif user.role != Role.ADMIN.value:
             raise PermissionDenied("无权查看该操作记录")
     elif entity_type == "dept_report":

@@ -1068,6 +1068,93 @@ textarea {
   max-width: 460px;
 }
 
+.audit-modal {
+  max-width: 640px;
+}
+
+.audit-modal-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.audit-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 14px;
+}
+
+.audit-event {
+  display: flex;
+  gap: 10px;
+  padding-bottom: 14px;
+  position: relative;
+}
+
+.audit-event:not(:last-child)::before {
+  background: var(--line);
+  bottom: 0;
+  content: "";
+  left: 4px;
+  position: absolute;
+  top: 14px;
+  width: 2px;
+}
+
+.audit-dot {
+  background: var(--primary);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--primary-soft);
+  flex-shrink: 0;
+  height: 10px;
+  margin-top: 5px;
+  position: relative;
+  width: 10px;
+  z-index: 1;
+}
+
+.audit-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.audit-head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  gap: 8px;
+}
+
+.audit-action {
+  background: var(--primary-soft);
+  border-radius: 6px;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+}
+
+.audit-time {
+  color: var(--muted);
+  font-size: 11px;
+  margin-left: auto;
+}
+
+.audit-detail {
+  color: #475569;
+  font-size: 12px;
+  margin-top: 3px;
+  word-break: break-word;
+}
+
+.audit-empty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 12px 0;
+}
+
 /* ---------- 院领导 ---------- */
 .leader-reports {
   display: flex;

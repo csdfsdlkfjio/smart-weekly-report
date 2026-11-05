@@ -27,6 +27,20 @@
     "完善", "提升", "保障", "确保", "持续", "积极", "进一步", "及时", "认真",
   ];
   const RETURNABLE_DEPT_STATUSES = ["已汇总", "已定稿", "已上报", "已退回"];
+  const AUDIT_ACTION_LABELS = {
+    create_draft: "创建草稿",
+    save_draft: "保存草稿",
+    submit: "提交周报",
+    resubmit: "重新提交",
+    return: "退回",
+    aggregate: "一键汇总",
+    reaggregate: "重新汇总",
+    update_items: "编辑条目",
+    update_summary: "编辑摘要",
+    finalize: "定稿",
+    report: "上报院领导",
+    forbidden_access: "越权访问",
+  };
   const TRACK_TRAILING_WORDS = [
     "已完成", "已开展", "检查", "抽查", "自查", "核查", "优化", "培训",
     "会议", "工作", "事项", "任务", "情况", "问题", "进展", "计划", "总结",
@@ -74,6 +88,7 @@
   };
 
   let pendingReturn = null;
+  let auditRequestSeq = 0;
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -200,6 +215,7 @@
       editingWeekId: null,
     };
     closeAdminModals();
+    closeAuditModal();
   }
 
   function showView(viewId) {
@@ -441,6 +457,7 @@
       }
     });
 
+    $("#member-history-btn").disabled = !report;
     syncMemberControls();
   }
 
@@ -773,6 +790,7 @@
     renderChecked(report?.checked || []);
     renderRisks(report?.risks || []);
     $("#trace-badges").innerHTML = traceHtml(report?.engine_trace || [], "尚无 trace");
+    $("#director-history-btn").disabled = !report;
     syncDirectorControls();
   }
 
@@ -1277,6 +1295,90 @@
       .join("");
   }
 
+  /* ---------------- 操作历史 ---------------- */
+
+  function auditDetail(event) {
+    const before = event.before_json || {};
+    const after = event.after_json || {};
+    const parts = [];
+
+    if (before.status && after.status) {
+      if (before.status !== after.status) parts.push(`${before.status} → ${after.status}`);
+    } else if (after.status) {
+      parts.push(`状态：${after.status}`);
+    }
+
+    if (after.reason) parts.push(`理由：${after.reason}`);
+    if (after.member_report_id) parts.push(`成员周报 #${after.member_report_id}`);
+    if (after.version) parts.push(`版本 v${after.version}`);
+    if (after.item_count !== undefined) parts.push(`条目数 ${after.item_count}`);
+    if (after.member_report_count !== undefined) {
+      parts.push(`成员周报 ${after.member_report_count} 份`);
+    }
+    if (after.engine_switch) {
+      parts.push(`引擎：${after.engine_switch === "llm" ? "大模型" : "规则"}`);
+    }
+    if (event.action === "update_items" && Array.isArray(after.items)) {
+      parts.push(`当前 ${after.items.length} 条`);
+    }
+    if (event.action === "update_summary") parts.push("摘要已更新");
+
+    return parts.join(" · ");
+  }
+
+  function renderAuditTimeline(events) {
+    const container = $("#audit-list");
+    if (!events.length) {
+      container.innerHTML = '<p class="audit-empty">暂无操作记录</p>';
+      return;
+    }
+
+    container.innerHTML = events
+      .map((event) => {
+        const action = AUDIT_ACTION_LABELS[event.action] || event.action;
+        const operator =
+          event.operator_name ||
+          (event.operator_id ? `用户 #${event.operator_id}` : "系统");
+        const detail = auditDetail(event);
+        return `<div class="audit-event">
+          <span class="audit-dot"></span>
+          <div class="audit-body">
+            <div class="audit-head">
+              <strong>${escapeHtml(operator)}</strong>
+              <span class="audit-action">${escapeHtml(action)}</span>
+              <time class="audit-time">${formatTime(event.created_at)}</time>
+            </div>
+            ${detail ? `<p class="audit-detail">${escapeHtml(detail)}</p>` : ""}
+          </div>
+        </div>`;
+      })
+      .join("");
+  }
+
+  async function openAuditModal(entityType, entityId, title, subtitle) {
+    const seq = ++auditRequestSeq;
+    $("#audit-title").textContent = title;
+    $("#audit-subtitle").textContent = subtitle || "";
+    $("#audit-list").innerHTML = '<p class="audit-empty">加载中...</p>';
+    $("#audit-backdrop").classList.remove("hidden");
+
+    try {
+      const events = await api(`/api/audit/${entityType}/${entityId}`);
+      if (seq !== auditRequestSeq) return;
+      renderAuditTimeline(events || []);
+    } catch (error) {
+      if (seq !== auditRequestSeq) return;
+      $("#audit-list").innerHTML =
+        `<p class="audit-empty">加载失败：${escapeHtml(error.message)}</p>`;
+      showToast(error.message, "error");
+    }
+  }
+
+  function closeAuditModal() {
+    auditRequestSeq += 1;
+    $("#audit-backdrop").classList.add("hidden");
+  }
+
   /* ---------------- 系统管理员 ---------------- */
 
   function toDateTimeLocal(value) {
@@ -1682,6 +1784,37 @@
       }
     });
 
+    $("#member-history-btn").addEventListener("click", () => {
+      const report = state.member.report;
+      if (!report) {
+        showToast("当前周暂无周报记录", "info");
+        return;
+      }
+      openAuditModal(
+        "member_report",
+        report.id,
+        "操作历史 · 我的周报",
+        `周报 #${report.id} · 最新记录在前`
+      );
+    });
+    $("#director-history-btn").addEventListener("click", () => {
+      const report = state.director.report;
+      if (!report) {
+        showToast("请先汇总后再查看操作历史", "info");
+        return;
+      }
+      openAuditModal(
+        "dept_report",
+        report.id,
+        "操作历史 · 科室汇总稿",
+        `汇总稿 #${report.id} · 最新记录在前`
+      );
+    });
+    $("#audit-close").addEventListener("click", closeAuditModal);
+    $("#audit-backdrop").addEventListener("click", (event) => {
+      if (event.target === event.currentTarget) closeAuditModal();
+    });
+
     $("#admin-add-user").addEventListener("click", () => openAdminUserModal());
     $("#admin-add-dept").addEventListener("click", openAdminDeptModal);
     $("#admin-add-week").addEventListener("click", openAdminWeekModal);
@@ -1714,6 +1847,7 @@
       if (event.key === "Escape") {
         closeReturnModal();
         closeAdminModals();
+        closeAuditModal();
         if (state.director.trackOpenItemId) {
           resetDirectorTrack();
           if (state.director.report) renderDirectorReport(state.director.report);

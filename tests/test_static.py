@@ -26,6 +26,10 @@ def test_index_page_is_served_at_root(client):
         "leader-dept",
         "leader-reports",
         "modal-reason",
+        "member-history-btn",
+        "director-history-btn",
+        "audit-backdrop",
+        "audit-list",
         "admin-users-body",
         "admin-depts-body",
         "admin-weeks-body",
@@ -81,6 +85,11 @@ def test_static_assets_are_served(client):
     assert "function populateLeaderDeptOptions()" in js.text
     assert "/api/departments" in js.text
     assert '$("#leader-dept").addEventListener("change", loadLeaderView)' in js.text
+    assert "function openAuditModal(" in js.text
+    assert "function renderAuditTimeline(events)" in js.text
+    assert "AUDIT_ACTION_LABELS" in js.text
+    assert 'openAuditModal(\n        "member_report"' in js.text or '"member_report",' in js.text
+    assert '"dept_report",' in js.text
 
 
 def test_static_responses_are_not_cached(client):

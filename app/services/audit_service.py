@@ -39,6 +39,7 @@ def list_timeline(db: Session, entity_type: str, entity_id: int) -> list[models.
             models.AuditLog.entity_type == entity_type,
             models.AuditLog.entity_id == entity_id,
         )
-        .order_by(models.AuditLog.created_at, models.AuditLog.id)
+        # 时间线按时间倒序：最新操作在前
+        .order_by(models.AuditLog.created_at.desc(), models.AuditLog.id.desc())
     )
     return list(db.scalars(stmt))

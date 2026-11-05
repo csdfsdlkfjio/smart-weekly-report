@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>智能周报系统</title>
-  <link rel="stylesheet" href="/static/style.css?v=20261105-10">
+  <link rel="stylesheet" href="/static/style.css?v=20261105-11">
 </head>
 <body>
   <header class="topbar hidden" id="topbar">
@@ -92,6 +92,7 @@
             <select id="member-week" data-week-select></select>
           </label>
           <span class="status-badge" id="member-status">未填写</span>
+          <button class="btn btn-secondary btn-small" id="member-history-btn" type="button" disabled>查看操作历史</button>
         </div>
       </div>
 
@@ -194,7 +195,10 @@
       <div class="card" id="aggregate-card">
         <div class="card-head">
           <h3>汇总稿</h3>
-          <div class="trace-badges" id="trace-badges"></div>
+          <div class="card-head-actions">
+            <div class="trace-badges" id="trace-badges"></div>
+            <button class="btn btn-secondary btn-small" id="director-history-btn" type="button" disabled>查看操作历史</button>
+          </div>
         </div>
 
         <section class="summary-block">
@@ -479,8 +483,22 @@
     </div>
   </div>
 
+  <!-- 操作历史 -->
+  <div class="modal-backdrop hidden" id="audit-backdrop">
+    <div class="modal audit-modal" role="dialog" aria-modal="true" aria-labelledby="audit-title">
+      <div class="audit-modal-head">
+        <div>
+          <h3 id="audit-title">操作历史</h3>
+          <p class="muted" id="audit-subtitle"></p>
+        </div>
+        <button class="btn btn-ghost btn-small" id="audit-close" type="button">关闭</button>
+      </div>
+      <div class="audit-list" id="audit-list"></div>
+    </div>
+  </div>
+
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="/static/app.js?v=20261105-10"></script>
+  <script src="/static/app.js?v=20261105-11"></script>
 </body>
 </html>

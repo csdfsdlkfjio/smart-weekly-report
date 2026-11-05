@@ -356,6 +356,7 @@ class TimelineEventOut(BaseModel):
     entity_id: int
     action: str
     operator_id: int | None
+    operator_name: str | None = None
     before_json: dict[str, Any] | None
     after_json: dict[str, Any] | None
     created_at: datetime

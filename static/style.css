@@ -663,50 +663,36 @@ textarea {
   margin-bottom: 20px;
 }
 
-.items-head {
-  align-items: flex-start;
+.merged-item-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.track-inline {
+  animation: track-expand 0.22s ease;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin-top: 6px;
+  padding: 10px 12px;
+}
+
+@keyframes track-expand {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.track-inline-head {
+  align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.items-head h4 {
-  margin-bottom: 0;
-}
-
-.track-search {
-  align-items: center;
-  display: flex;
-  gap: 8px;
-}
-
-.track-search input {
-  background: var(--surface-soft);
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  font: inherit;
   font-size: 12px;
-  min-width: 280px;
-  outline: none;
-  padding: 7px 10px;
-}
-
-.track-search input:focus {
-  border-color: #93b4ff;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-
-.track-modal {
-  max-width: 680px;
-}
-
-.track-modal-head {
-  align-items: center;
-  display: flex;
-  gap: 12px;
+  gap: 8px;
   justify-content: space-between;
+}
+
+.track-inline .timeline {
+  margin-top: 8px;
 }
 
 .timeline {
@@ -1169,6 +1155,4 @@ textarea {
   .merged-item { flex-wrap: wrap; }
   .source-badges { justify-content: flex-start; max-width: none; }
   .card-actions { align-items: flex-start; flex-direction: column; gap: 12px; }
-  .track-search { width: 100%; }
-  .track-search input { min-width: 0; width: 100%; }
 }

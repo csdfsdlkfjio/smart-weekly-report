@@ -21,6 +21,15 @@
     issue: "存在问题",
     coord: "需协调",
   };
+  const TRACK_LEADING_VERBS = [
+    "完成", "继续", "推进", "开展", "组织", "协调", "优化", "整理",
+    "参加", "更新", "加强", "落实", "做好", "进行", "实施", "建立",
+    "完善", "提升", "保障", "确保", "持续", "积极", "进一步", "及时", "认真",
+  ];
+  const TRACK_TRAILING_WORDS = [
+    "已完成", "已开展", "检查", "抽查", "自查", "核查", "优化", "培训",
+    "会议", "工作", "事项", "任务", "情况", "问题", "进展", "计划", "总结",
+  ];
   const RISK_LABELS = {
     missing_submission: "未提交",
     unclosed_coord: "协调超期未闭环",
@@ -43,7 +52,16 @@
     departments: [],
     engine: "rule",
     member: { report: null, weekId: null },
-    director: { overview: null, report: null, weekId: null },
+    director: {
+      overview: null,
+      report: null,
+      weekId: null,
+      trackOpenItemId: null,
+      trackKeyword: "",
+      trackData: null,
+      trackLoading: false,
+      trackError: "",
+    },
     leader: { reports: [], weekId: "", deptId: "" },
   };
 
@@ -145,7 +163,16 @@
     state.user = null;
     localStorage.removeItem(TOKEN_KEY);
     state.member = { report: null, weekId: null };
-    state.director = { overview: null, report: null, weekId: null };
+    state.director = {
+      overview: null,
+      report: null,
+      weekId: null,
+      trackOpenItemId: null,
+      trackKeyword: "",
+      trackData: null,
+      trackLoading: false,
+      trackError: "",
+    };
     state.leader = { reports: [], weekId: "", deptId: "" };
   }
 
@@ -461,7 +488,48 @@
     return value ? Number(value) : null;
   }
 
+  function resetDirectorTrack() {
+    state.director.trackOpenItemId = null;
+    state.director.trackKeyword = "";
+    state.director.trackData = null;
+    state.director.trackLoading = false;
+    state.director.trackError = "";
+  }
+
+  function extractTrackKeyword(content) {
+    let text = String(content || "")
+      .replace(/[（(][^）)]*[）)]/g, "")
+      .replace(/[，。；、,.!?！？:：;]/g, " ")
+      .replace(/\d+(\.\d+)?%?\s*(次|份|人|例|项|天|台|个|周|月|年|条)?/g, "")
+      .replace(/\s+/g, "");
+
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const verb of TRACK_LEADING_VERBS) {
+        if (text.startsWith(verb) && text.length > verb.length + 1) {
+          text = text.slice(verb.length);
+          changed = true;
+        }
+      }
+    }
+
+    changed = true;
+    while (changed) {
+      changed = false;
+      for (const word of TRACK_TRAILING_WORDS) {
+        if (text.endsWith(word) && text.length > word.length + 1) {
+          text = text.slice(0, -word.length);
+          changed = true;
+        }
+      }
+    }
+
+    return (text.length >= 2 ? text : String(content || "").trim()).slice(0, 50);
+  }
+
   async function loadDirectorView() {
+    resetDirectorTrack();
     const weekId = directorWeekId();
     if (!weekId) {
       state.director.overview = null;
@@ -554,19 +622,25 @@
   }
 
   function mergedItemHtml(item, index, editable) {
+    const itemKey = item.id || `idx-${index}`;
+    const isOpen = state.director.trackOpenItemId === itemKey;
     const sources = (item.source_names || [])
       .map((name) => `<span class="source-badge">${escapeHtml(name)}</span>`)
       .join("");
-    const actions = editable
-      ? `<div class="item-actions">
-           <button class="btn btn-ghost btn-small" type="button" data-delete-item="${index}">删除</button>
-         </div>`
-      : "";
-    return `<div class="merged-item" data-index="${index}">
-      <span class="category-tag">${escapeHtml(CATEGORY_LABELS[item.category] || item.category)}</span>
-      <div class="merged-content" data-role="content"${editable ? ' title="双击编辑"' : ""}>${escapeHtml(item.content)}</div>
-      <div class="source-badges">${sources}</div>
-      ${actions}
+    const actions = `<div class="item-actions">
+      <button class="btn btn-ghost btn-small" type="button" data-track-item="${index}">
+        ${isOpen ? "⏱ 收起" : "⏱ 追踪"}
+      </button>
+      ${editable ? `<button class="btn btn-ghost btn-small" type="button" data-delete-item="${index}">删除</button>` : ""}
+    </div>`;
+    return `<div class="merged-item-block">
+      <div class="merged-item" data-index="${index}" data-item-key="${itemKey}">
+        <span class="category-tag">${escapeHtml(CATEGORY_LABELS[item.category] || item.category)}</span>
+        <div class="merged-content" data-role="content"${editable ? ' title="双击编辑"' : ""}>${escapeHtml(item.content)}</div>
+        <div class="source-badges">${sources}</div>
+        ${actions}
+      </div>
+      ${isOpen ? trackInlineHtml() : ""}
     </div>`;
   }
 
@@ -650,13 +724,13 @@
       itemsContainer.innerHTML = report.items
         .map((item, index) => mergedItemHtml(item, index, editable))
         .join("");
-      if (editable) {
-        $$(".merged-item", itemsContainer).forEach((row) => {
-          const index = Number(row.dataset.index);
-          row.querySelector("[data-role='content']")?.addEventListener("dblclick", () => startItemEdit(index));
-          row.querySelector("[data-delete-item]")?.addEventListener("click", () => deleteDirectorItem(index));
-        });
-      }
+      $$(".merged-item", itemsContainer).forEach((row) => {
+        const index = Number(row.dataset.index);
+        row.querySelector("[data-track-item]")?.addEventListener("click", () => toggleItemTrack(index));
+        if (!editable) return;
+        row.querySelector("[data-role='content']")?.addEventListener("dblclick", () => startItemEdit(index));
+        row.querySelector("[data-delete-item]")?.addEventListener("click", () => deleteDirectorItem(index));
+      });
     }
 
     renderChecked(report?.checked || []);
@@ -676,6 +750,7 @@
         body: JSON.stringify({ week_id: weekId, engine_switch: state.engine }),
       });
       state.director.report = report;
+      resetDirectorTrack();
       renderDirectorOverview(state.director.overview);
       renderDirectorReport(report);
       showToast("一键汇总完成", "success");
@@ -703,6 +778,7 @@
         body: JSON.stringify({ items: payload }),
       });
       state.director.report = updated;
+      resetDirectorTrack();
       renderDirectorReport(updated);
       showToast("条目已更新", "success");
     } catch (error) {
@@ -838,27 +914,8 @@
     closeAddItemRow();
   }
 
-  function closeTrackModal() {
-    $("#track-backdrop").classList.add("hidden");
-  }
-
-  function renderTrackTimeline(data) {
-    const container = $("#track-timeline");
-    const subtitle = $("#track-subtitle");
-
-    if (!data.found) {
-      subtitle.textContent = `关键词“${data.keyword}”`;
-      container.innerHTML =
-        '<p class="track-empty">未找到包含该关键词的历史条目。可尝试“电子病历”或“护理质控”。</p>';
-      return;
-    }
-
-    const firstMatch = data.timeline.find((week) => week.status === "matched");
-    subtitle.textContent = `关键词“${data.keyword}” · 首次出现：第 ${
-      firstMatch ? firstMatch.week_no : "-"
-    } 周 · 共 ${data.timeline.length} 周`;
-
-    container.innerHTML = data.timeline
+  function timelineWeeksHtml(data) {
+    return `<div class="timeline">${data.timeline
       .map((week) => {
         const missed = week.status !== "matched";
         const items = (week.items || [])
@@ -887,36 +944,64 @@
           </div>
         </div>`;
       })
-      .join("");
+      .join("")}</div>`;
   }
 
-  async function trackItem() {
-    const input = $("#track-keyword");
-    const keyword = input.value.trim();
-    if (!keyword) {
-      showToast("请输入追踪关键词", "error");
-      input.focus();
+  function trackInlineHtml() {
+    const { trackKeyword, trackData, trackLoading, trackError } = state.director;
+    let body;
+    if (trackLoading) {
+      body = '<p class="track-empty">正在检索历史周报...</p>';
+    } else if (trackError) {
+      body = `<p class="track-empty">查询失败：${escapeHtml(trackError)}</p>`;
+    } else if (!trackData || !trackData.found) {
+      body = `<p class="track-empty">未找到包含“${escapeHtml(trackKeyword)}”的历史条目</p>`;
+    } else {
+      const firstMatch = trackData.timeline.find((week) => week.status === "matched");
+      body = `<div class="track-inline-head">
+        <strong>跨周追踪：${escapeHtml(trackKeyword)}</strong>
+        <span class="muted">首次出现：第 ${firstMatch ? firstMatch.week_no : "-"} 周</span>
+      </div>${timelineWeeksHtml(trackData)}`;
+    }
+    return `<div class="track-inline">${body}</div>`;
+  }
+
+  async function toggleItemTrack(index) {
+    const report = state.director.report;
+    if (!report || !report.items) return;
+    const item = report.items[index];
+    if (!item) return;
+
+    const itemKey = item.id || `idx-${index}`;
+    if (state.director.trackOpenItemId === itemKey) {
+      resetDirectorTrack();
+      renderDirectorReport(state.director.report);
       return;
     }
 
-    const button = $("#track-btn");
-    if (button.disabled) return;
-    setBusy(button, true, "查询中...");
-    $("#track-subtitle").textContent = `关键词“${keyword}”`;
-    $("#track-timeline").innerHTML = '<p class="track-empty">正在检索历史周报...</p>';
-    $("#track-backdrop").classList.remove("hidden");
+    const keyword = extractTrackKeyword(item.content);
+    state.director.trackOpenItemId = itemKey;
+    state.director.trackKeyword = keyword;
+    state.director.trackData = null;
+    state.director.trackError = "";
+    state.director.trackLoading = true;
+    renderDirectorReport(state.director.report);
 
     try {
       const params = new URLSearchParams({ keyword });
       if (state.user?.dept_id) params.set("dept_id", String(state.user.dept_id));
       const data = await api(`/api/director/track-item?${params.toString()}`);
-      renderTrackTimeline(data);
+      if (state.director.trackOpenItemId !== itemKey) return;
+      state.director.trackData = data;
     } catch (error) {
-      showToast(error.message, "error");
-      $("#track-timeline").innerHTML =
-        `<p class="track-empty">查询失败：${escapeHtml(error.message)}</p>`;
+      if (state.director.trackOpenItemId !== itemKey) return;
+      state.director.trackError = error.message || "查询失败";
+      showToast(state.director.trackError, "error");
     } finally {
-      setBusy(button, false);
+      if (state.director.trackOpenItemId === itemKey) {
+        state.director.trackLoading = false;
+        renderDirectorReport(state.director.report);
+      }
     }
   }
 
@@ -1192,18 +1277,6 @@
       }
     });
 
-    $("#track-btn").addEventListener("click", trackItem);
-    $("#track-keyword").addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        trackItem();
-      }
-    });
-    $("#track-close").addEventListener("click", closeTrackModal);
-    $("#track-backdrop").addEventListener("click", (event) => {
-      if (event.target === event.currentTarget) closeTrackModal();
-    });
-
     $("#modal-cancel").addEventListener("click", closeReturnModal);
     $("#modal-confirm").addEventListener("click", confirmReturn);
     $("#modal-backdrop").addEventListener("click", (event) => {
@@ -1212,7 +1285,10 @@
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         closeReturnModal();
-        closeTrackModal();
+        if (state.director.trackOpenItemId) {
+          resetDirectorTrack();
+          if (state.director.report) renderDirectorReport(state.director.report);
+        }
       }
     });
   }

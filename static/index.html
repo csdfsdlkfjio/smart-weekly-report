@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>智能周报系统</title>
-  <link rel="stylesheet" href="/static/style.css?v=20261105-15">
+  <link rel="stylesheet" href="/static/style.css?v=20261105-16">
 </head>
 <body>
   <header class="topbar hidden" id="topbar">
@@ -170,6 +170,15 @@
         <div class="stat-card">
           <span class="stat-label">提交率</span>
           <strong class="stat-value stat-rate" id="stat-rate">-</strong>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">本周退回次数</span>
+          <strong class="stat-value stat-return" id="stat-returns">-</strong>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">本周归并</span>
+          <strong class="stat-value stat-items" id="stat-items">-</strong>
+          <span class="stat-compare" id="stat-item-compare"></span>
         </div>
         <div class="stat-card stat-wide">
           <span class="stat-label">未交人员</span>
@@ -533,6 +542,6 @@
 
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="/static/app.js?v=20261105-15"></script>
+  <script src="/static/app.js?v=20261105-16"></script>
 </body>
 </html>

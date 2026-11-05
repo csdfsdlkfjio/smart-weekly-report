@@ -19,6 +19,61 @@ def test_overview_shows_missing_members(client, seed, login, submit_report):
     assert statuses["member_d"] == "未提交"
 
 
+def test_overview_includes_merged_item_count_and_return_count(
+    client, seed, login, submit_report
+):
+    submit_report(
+        "member_a",
+        seed["week1_id"],
+        done=["完成护理质控检查", "组织业务学习"],
+        plan=["开展培训"],
+    )
+    submit_report("member_a", seed["week2_id"], done=["完成护理质控抽查"])
+    headers = login("director")
+
+    week1_report = client.post(
+        "/api/director/aggregate",
+        json={"week_id": seed["week1_id"]},
+        headers=headers,
+    ).json()
+    week2_report = client.post(
+        "/api/director/aggregate",
+        json={"week_id": seed["week2_id"]},
+        headers=headers,
+    ).json()
+
+    overview = client.get(
+        "/api/director/overview",
+        params={"week_id": seed["week2_id"]},
+        headers=headers,
+    ).json()
+
+    assert overview["item_count"] == len(week2_report["items"])
+    assert overview["previous_item_count"] == len(week1_report["items"])
+    assert overview["return_count"] == 0
+
+    member_report_id = next(
+        item["report_id"]
+        for item in overview["members"]
+        if item["username"] == "member_a"
+    )
+    returned = client.post(
+        f"/api/director/dept-report/{week2_report['id']}/return",
+        json={"member_report_id": member_report_id, "reason": "请补充数据"},
+        headers=headers,
+    )
+    assert returned.status_code == 200
+
+    after_return = client.get(
+        "/api/director/overview",
+        params={"week_id": seed["week2_id"]},
+        headers=headers,
+    ).json()
+    assert after_return["return_count"] == 1
+    # 汇总稿条目仍保留，便于追溯；退回次数单独统计
+    assert after_return["item_count"] == len(week2_report["items"])
+
+
 def test_main_chain_merge_finalize_report_and_leader_read(client, seed, login, submit_report):
     # A 与 B 写同一事项，用于验证归并与来源标注
     submit_report("member_a", seed["week1_id"], done=["完成护理质控检查"], plan=["开展护理培训"])

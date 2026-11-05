@@ -619,6 +619,9 @@
       $("#stat-submitted").textContent = "-";
       $("#stat-missing").textContent = "-";
       $("#stat-rate").textContent = "-";
+      $("#stat-returns").textContent = "-";
+      $("#stat-items").textContent = "-";
+      $("#stat-item-compare").textContent = "";
       $("#stat-missing-names").textContent = "-";
       $("#remind-btn").disabled = true;
       $("#overview-list").innerHTML = '<p class="empty">暂无数据</p>';
@@ -630,6 +633,32 @@
     $("#stat-submitted").textContent = overview.submitted_count;
     $("#stat-missing").textContent = overview.missing_count;
     $("#stat-rate").textContent = `${rate}%`;
+    $("#stat-returns").textContent = overview.return_count ?? 0;
+
+    const hasReport = Boolean(state.director.report);
+    $("#stat-items").textContent = hasReport ? `${overview.item_count ?? 0} 条` : "—";
+    const compare = $("#stat-item-compare");
+    compare.className = "stat-compare";
+    if (!hasReport) {
+      compare.textContent = "尚未汇总";
+    } else if (
+      overview.previous_item_count === null ||
+      overview.previous_item_count === undefined
+    ) {
+      compare.textContent = "上一周无汇总";
+    } else {
+      const diff = (overview.item_count ?? 0) - overview.previous_item_count;
+      if (diff > 0) {
+        compare.textContent = `较上周 +${diff} 条`;
+        compare.classList.add("is-up");
+      } else if (diff < 0) {
+        compare.textContent = `较上周 ${diff} 条`;
+        compare.classList.add("is-down");
+      } else {
+        compare.textContent = "与上周持平";
+      }
+    }
+
     $("#stat-missing-names").textContent = (overview.missing_names || []).length
       ? overview.missing_names.join("、")
       : "无";

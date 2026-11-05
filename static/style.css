@@ -486,7 +486,7 @@ textarea {
 .stats-row {
   display: grid;
   gap: 14px;
-  grid-template-columns: 150px 150px 150px minmax(0, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(0, 1.6fr);
   margin-bottom: 18px;
 }
 
@@ -510,6 +510,18 @@ textarea {
 .stat-success { color: var(--success); }
 .stat-danger { color: var(--danger); }
 .stat-rate { color: var(--primary); }
+.stat-return { color: var(--warning); }
+.stat-items { color: var(--primary); }
+
+.stat-compare {
+  color: var(--muted);
+  display: block;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.stat-compare.is-up { color: var(--success); }
+.stat-compare.is-down { color: var(--danger); }
 .stat-names { font-size: 14px; }
 
 .stat-wide-row {

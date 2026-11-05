@@ -16,6 +16,9 @@ def test_index_page_is_served_at_root(client):
     for element_id in (
         "engine-switch",
         "stat-rate",
+        "stat-returns",
+        "stat-items",
+        "stat-item-compare",
         "remind-btn",
         "member-save",
         "member-submit",
@@ -105,6 +108,8 @@ def test_static_assets_are_served(client):
     assert "closeAskModal" in js.text
     assert "催报提醒已发送" in js.text
     assert "$(\"#stat-rate\").textContent" in js.text
+    assert "previous_item_count" in js.text
+    assert "return_count" in js.text
     assert 'openAuditModal(\n        "member_report"' in js.text or '"member_report",' in js.text
     assert '"dept_report",' in js.text
 

@@ -322,6 +322,9 @@ class OverviewOut(BaseModel):
     missing_count: int
     missing_names: list[str]
     members: list[OverviewMemberOut]
+    item_count: int = 0
+    previous_item_count: int | None = None
+    return_count: int = 0
 
 
 class TrackedItemOut(BaseModel):

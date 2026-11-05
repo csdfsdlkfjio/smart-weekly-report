@@ -11,7 +11,7 @@ import re
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app import models
@@ -320,6 +320,25 @@ def list_member_versions(db: Session, user: models.User, week_id: int) -> list[m
 # --------------------------------------------------------------------------- #
 
 
+def _week_return_count(db: Session, dept_id: int, week_id: int) -> int:
+    stmt = (
+        select(func.count())
+        .select_from(models.AuditLog)
+        .join(
+            models.MemberReport,
+            models.MemberReport.id == models.AuditLog.entity_id,
+        )
+        .join(models.User, models.User.id == models.MemberReport.user_id)
+        .where(
+            models.AuditLog.entity_type == "member_report",
+            models.AuditLog.action == "return",
+            models.MemberReport.week_id == week_id,
+            models.User.dept_id == dept_id,
+        )
+    )
+    return db.scalar(stmt) or 0
+
+
 def get_overview(db: Session, director: models.User, week_id: int) -> dict[str, Any]:
     """提交情况看板：已交/未交成员一目了然，未提交名单供风险提示使用。"""
     dept_id = _director_dept_id(director)
@@ -366,6 +385,31 @@ def get_overview(db: Session, director: models.User, week_id: int) -> dict[str, 
             }
         )
 
+    current_dept_report = db.scalar(
+        select(models.DeptReport).where(
+            models.DeptReport.dept_id == dept_id,
+            models.DeptReport.week_id == week.id,
+        )
+    )
+    item_count = len(current_dept_report.items or []) if current_dept_report else 0
+
+    previous_week = db.scalar(
+        select(models.Week)
+        .where(models.Week.week_no < week.week_no)
+        .order_by(models.Week.week_no.desc())
+        .limit(1)
+    )
+    previous_item_count: int | None = None
+    if previous_week is not None:
+        previous_report = db.scalar(
+            select(models.DeptReport).where(
+                models.DeptReport.dept_id == dept_id,
+                models.DeptReport.week_id == previous_week.id,
+            )
+        )
+        if previous_report is not None:
+            previous_item_count = len(previous_report.items or [])
+
     return {
         "week_id": week.id,
         "dept_id": dept_id,
@@ -373,6 +417,9 @@ def get_overview(db: Session, director: models.User, week_id: int) -> dict[str, 
         "missing_count": len(members) - submitted_count,
         "missing_names": missing_names,
         "members": rows,
+        "item_count": item_count,
+        "previous_item_count": previous_item_count,
+        "return_count": _week_return_count(db, dept_id, week.id),
     }
 
 

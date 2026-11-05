@@ -19,7 +19,7 @@
 Chrome（原生 HTML/CSS/JS 单页）
         │ HTTP REST (Bearer Token)
 FastAPI ── 接口层（auth/member/director/leader）
-        ├── 服务层：report_service（状态机/归属校验）、audit_service、ai_service、admin_service
+        ├── 服务层：report_service（状态机/归属校验）、audit_service、ai_service、admin_service、week_service
         ├── AI 层：LangGraph 固定 DAG + merger/validator/summarizer/risk（节点内降级）
         └── 数据层：SQLAlchemy + SQLite（users/departments/weeks/member_reports/
                     dept_reports/audit_logs/report_versions/sessions）
@@ -61,7 +61,7 @@ START ──▶ merger ──▶ validator ──▶ summarizer ──▶ END
 - **规则优先**：规则通道是底线，LLM 是增强，符合医院内网无法直连外网的现实。
 - **JSON 存条目**：MVP 阶段减少关联表与查询复杂度；来源/排序/编辑人仍完整保存。
 - **SQLite 单文件**：零外部依赖，评委 5 分钟启动；多科室高并发需迁移。
-- **管理员极简 CRUD**：新增/编辑用户、新增科室、新增周次、调整截止时间；不做删除，初始周次由 seed 维护，避免与真实排班表脱节。
+- **周次双轨**：管理员可新增周次、调整截止时间；系统启动与每日凌晨仅在“无周次覆盖今天”时兜底插入一个当前周，绝不修改手动配置。不做删除。
 - **无构建前端**：原生 HTML/JS，避免构建链带来的启动失败点。
 
 ## 6. 已知缺陷与改进

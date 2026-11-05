@@ -7,7 +7,10 @@
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
+import asyncio
+import logging
+from contextlib import asynccontextmanager, suppress
+from datetime import datetime, time, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -19,8 +22,31 @@ from app.db import init_db
 from app.exceptions import AppError
 from app.routers import admin, audit, auth, director, leader, member, meta
 from app.seed import seed_demo_data
+from app.services.week_service import ensure_current_week
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+logger = logging.getLogger(__name__)
+
+
+def _log_created_weeks(created: list) -> None:
+    if not created:
+        return
+    logger.info(
+        "自动兜底生成周次：%s",
+        [f"第{week.week_no}周 {week.start_date}~{week.end_date}" for week in created],
+    )
+
+
+async def _week_guard_loop() -> None:
+    """每天凌晨做一次兜底检查；管理员已配置覆盖今天时不做任何修改。"""
+    while True:
+        now = datetime.now()
+        next_midnight = datetime.combine(now.date() + timedelta(days=1), time.min)
+        await asyncio.sleep(max(60.0, (next_midnight - now).total_seconds()))
+        try:
+            _log_created_weeks(await asyncio.to_thread(ensure_current_week))
+        except Exception:
+            logger.exception("自动兜底周次检查失败")
 
 
 @asynccontextmanager
@@ -28,7 +54,17 @@ async def lifespan(_app: FastAPI):
     init_db()
     if config.AUTO_SEED:
         seed_demo_data()
-    yield
+
+    # 启动兜底：仅当没有任何周次覆盖今天时才生成
+    _log_created_weeks(ensure_current_week())
+
+    week_guard_task = asyncio.create_task(_week_guard_loop())
+    try:
+        yield
+    finally:
+        week_guard_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await week_guard_task
 
 
 app = FastAPI(

@@ -649,13 +649,17 @@
     $("#director-hint").textContent = hints[status] || "汇总后可在本页编辑条目并定稿上报";
   }
 
-  function mergedItemHtml(item, index, editable) {
+  function mergedItemHtml(item, index, editable, total) {
     const itemKey = item.id || `idx-${index}`;
     const isOpen = state.director.trackOpenItemId === itemKey;
     const sources = (item.source_names || [])
       .map((name) => `<span class="source-badge">${escapeHtml(name)}</span>`)
       .join("");
     const actions = `<div class="item-actions">
+      ${editable ? `
+        <button class="btn btn-ghost btn-small" type="button" data-move-up="${index}"${index === 0 ? " disabled" : ""}>↑ 上移</button>
+        <button class="btn btn-ghost btn-small" type="button" data-move-down="${index}"${index === total - 1 ? " disabled" : ""}>↓ 下移</button>
+      ` : ""}
       <button class="btn btn-ghost btn-small" type="button" data-track-item="${index}">
         ${isOpen ? "⏱ 收起" : "⏱ 追踪"}
       </button>
@@ -747,16 +751,20 @@
 
     const itemsContainer = $("#director-items");
     if (!report || !report.items || !report.items.length) {
-      itemsContainer.innerHTML = '<p class="empty">尚未汇总</p>';
+      itemsContainer.innerHTML = report
+        ? '<p class="empty">暂无条目，可点击下方“手动补充条目”</p>'
+        : '<p class="empty">尚未汇总</p>';
     } else {
       itemsContainer.innerHTML = report.items
-        .map((item, index) => mergedItemHtml(item, index, editable))
+        .map((item, index) => mergedItemHtml(item, index, editable, report.items.length))
         .join("");
       $$(".merged-item", itemsContainer).forEach((row) => {
         const index = Number(row.dataset.index);
         row.querySelector("[data-track-item]")?.addEventListener("click", () => toggleItemTrack(index));
         if (!editable) return;
         row.querySelector("[data-role='content']")?.addEventListener("dblclick", () => startItemEdit(index));
+        row.querySelector("[data-move-up]")?.addEventListener("click", () => moveDirectorItem(index, -1));
+        row.querySelector("[data-move-down]")?.addEventListener("click", () => moveDirectorItem(index, 1));
         row.querySelector("[data-delete-item]")?.addEventListener("click", () => deleteDirectorItem(index));
       });
     }
@@ -813,6 +821,17 @@
       showToast(error.message, "error");
       renderDirectorReport(state.director.report);
     }
+  }
+
+  async function moveDirectorItem(index, offset) {
+    const report = state.director.report;
+    if (!report || report.status !== "已汇总") return;
+    const target = index + offset;
+    if (target < 0 || target >= report.items.length) return;
+
+    const items = report.items.map((item) => ({ ...item }));
+    [items[index], items[target]] = [items[target], items[index]];
+    await persistDirectorItems(items);
   }
 
   function startItemEdit(index) {
@@ -936,7 +955,7 @@
         category: $("#add-item-category").value,
         content,
         source_user_ids: [],
-        source_names: [],
+        source_names: ["主任补充"],
       },
     ]);
     closeAddItemRow();

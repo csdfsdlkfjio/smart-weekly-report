@@ -146,6 +146,104 @@ def test_main_chain_merge_finalize_report_and_leader_read(client, seed, login, s
     assert leader_timeline.status_code == 200
 
 
+def test_director_can_reorder_and_add_manual_item(client, seed, login, submit_report):
+    submit_report("member_a", seed["week1_id"], done=["完成护理质控检查"])
+    headers = login("director")
+    aggregated = client.post(
+        "/api/director/aggregate", json={"week_id": seed["week1_id"]}, headers=headers
+    ).json()
+    dept_report_id = aggregated["id"]
+
+    manual = {
+        "category": "coord",
+        "content": "主任补充：协调设备采购流程",
+        "source_user_ids": [],
+        "source_names": ["主任补充"],
+    }
+    reordered = [manual] + [
+        {
+            "id": item["id"],
+            "category": item["category"],
+            "content": item["content"],
+            "source_user_ids": item["source_user_ids"],
+            "source_names": item["source_names"],
+        }
+        for item in aggregated["items"]
+    ]
+
+    updated = client.put(
+        f"/api/director/dept-report/{dept_report_id}/items",
+        json={"items": reordered},
+        headers=headers,
+    )
+
+    assert updated.status_code == 200, updated.text
+    items = updated.json()["items"]
+    assert items[0]["content"] == "主任补充：协调设备采购流程"
+    assert items[0]["source_names"] == ["主任补充"]
+    assert [item["sort_order"] for item in items] == list(range(len(items)))
+
+    persisted = client.get(
+        "/api/director/dept-report",
+        params={"week_id": seed["week1_id"]},
+        headers=headers,
+    ).json()
+    assert persisted["items"][0]["content"] == "主任补充：协调设备采购流程"
+    assert persisted["items"][0]["source_names"] == ["主任补充"]
+
+
+def test_finalized_report_is_read_only(client, seed, login, submit_report):
+    submit_report("member_a", seed["week1_id"], done=["完成护理质控检查"])
+    headers = login("director")
+    aggregated = client.post(
+        "/api/director/aggregate", json={"week_id": seed["week1_id"]}, headers=headers
+    ).json()
+    dept_report_id = aggregated["id"]
+    finalized = client.post(
+        f"/api/director/dept-report/{dept_report_id}/finalize", headers=headers
+    )
+    assert finalized.status_code == 200
+
+    items = [
+        {
+            "id": item["id"],
+            "category": item["category"],
+            "content": item["content"],
+            "source_user_ids": item["source_user_ids"],
+            "source_names": item["source_names"],
+        }
+        for item in aggregated["items"]
+    ]
+    blocked_items = client.put(
+        f"/api/director/dept-report/{dept_report_id}/items",
+        json={"items": items},
+        headers=headers,
+    )
+    assert blocked_items.status_code == 400
+
+    blocked_summary = client.put(
+        f"/api/director/dept-report/{dept_report_id}/summary",
+        json={"summary": "定稿后试图修改"},
+        headers=headers,
+    )
+    assert blocked_summary.status_code == 400
+
+    # 退回仍可用；退回后汇总稿回到已退回
+    overview = client.get(
+        "/api/director/overview", params={"week_id": seed["week1_id"]}, headers=headers
+    ).json()
+    member_report_id = next(
+        item["report_id"] for item in overview["members"] if item["username"] == "member_a"
+    )
+    returned = client.post(
+        f"/api/director/dept-report/{dept_report_id}/return",
+        json={"member_report_id": member_report_id, "reason": "定稿后发现需修改"},
+        headers=headers,
+    )
+    assert returned.status_code == 200
+    assert returned.json()["dept_report"]["status"] == "已退回"
+
+
 def test_aggregate_requires_submitted_reports(client, seed, login):
     response = client.post(
         "/api/director/aggregate",

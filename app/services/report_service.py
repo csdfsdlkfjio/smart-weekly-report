@@ -612,8 +612,11 @@ def update_dept_items(
 ) -> models.DeptReport:
     """主任编辑汇总条目：逐条改/删/补/排序。"""
     report = _get_dept_report_owned(db, director, dept_report_id)
-    if report.status == DeptReportStatus.REPORTED.value:
-        raise StateTransitionError("已上报的汇总稿不能编辑")
+    if report.status in (
+        DeptReportStatus.FINALIZED.value,
+        DeptReportStatus.REPORTED.value,
+    ):
+        raise StateTransitionError("已定稿/已上报的汇总稿不能编辑")
     if report.status == DeptReportStatus.RETURNED.value:
         raise StateTransitionError("汇总稿已退回，请重新汇总后再编辑")
 
@@ -657,8 +660,11 @@ def update_dept_summary(
     db: Session, director: models.User, dept_report_id: int, summary: str
 ) -> models.DeptReport:
     report = _get_dept_report_owned(db, director, dept_report_id)
-    if report.status == DeptReportStatus.REPORTED.value:
-        raise StateTransitionError("已上报的汇总稿不能编辑")
+    if report.status in (
+        DeptReportStatus.FINALIZED.value,
+        DeptReportStatus.REPORTED.value,
+    ):
+        raise StateTransitionError("已定稿/已上报的汇总稿不能编辑")
     if report.status == DeptReportStatus.RETURNED.value:
         raise StateTransitionError("汇总稿已退回，请重新汇总后再编辑")
 

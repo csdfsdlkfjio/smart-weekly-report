@@ -36,6 +36,7 @@ def test_index_page_is_served_at_root(client):
     ):
         assert f'id="{element_id}"' in body
     assert 'id="track-keyword"' not in body
+    assert "+ 手动补充条目" in body
 
 
 def test_static_assets_are_served(client):
@@ -73,6 +74,10 @@ def test_static_assets_are_served(client):
         in js.text
     )
     assert "RETURNABLE_DEPT_STATUSES.includes" in js.text
+    assert "↑ 上移" in js.text
+    assert "↓ 下移" in js.text
+    assert "function moveDirectorItem(index, offset)" in js.text
+    assert 'source_names: ["主任补充"]' in js.text
 
 
 def test_static_responses_are_not_cached(client):

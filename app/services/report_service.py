@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 from uuid import uuid4
 
@@ -912,6 +913,107 @@ def track_item(
         "dept_id": own_dept_id,
         "found": True,
         "timeline": timeline,
+    }
+
+
+_QUESTION_NOISE = [
+    "请问",
+    "请帮我",
+    "帮我",
+    "查一下",
+    "查询",
+    "追踪",
+    "跟踪",
+    "看看",
+    "了解一下",
+    "了解",
+    "最近四周",
+    "最近4周",
+    "四周",
+    "4周",
+    "最近",
+    "的进展如何",
+    "的进展",
+    "进展如何",
+    "进展",
+    "情况如何",
+    "情况",
+    "如何",
+    "怎么样",
+    "怎样",
+    "工作",
+    "事项",
+    "项目",
+    "相关",
+    "一下",
+    "吗",
+    "呢",
+]
+
+_TRACK_CATEGORY_LABELS = {
+    "done": "完成",
+    "plan": "计划",
+    "issue": "问题",
+    "coord": "协调",
+}
+
+
+def extract_tracking_keyword(question: str) -> str:
+    """从自然语言问题中提取追踪关键词（极简规则）。"""
+    text = str(question).strip()
+    for word in _QUESTION_NOISE:
+        text = text.replace(word, "")
+    text = re.sub(r"[^\w一-鿿]+", "", text)
+    return text.strip("的了是有")[:50]
+
+
+def answer_progress_question(
+    db: Session,
+    director: models.User,
+    question: str,
+    dept_id: int | None = None,
+) -> dict[str, Any]:
+    """A5 极简问答：提取关键词后复用跨周追踪，拼接自然语言回答。"""
+    keyword = extract_tracking_keyword(question)
+    if not keyword:
+        return {
+            "question": question,
+            "keyword": "",
+            "found": False,
+            "answer": "请补充要查询的工作关键词，例如“电子病历”或“护理质控”。",
+        }
+
+    tracking = track_item(db, director, keyword, dept_id)
+    if not tracking["found"]:
+        return {
+            "question": question,
+            "keyword": keyword,
+            "found": False,
+            "answer": f"未找到与“{keyword}”相关的历史周报条目，请尝试“电子病历”或“护理质控”。",
+        }
+
+    # 只总结最近四周
+    timeline = tracking["timeline"][-4:]
+    parts: list[str] = []
+    for week in timeline:
+        if week["status"] != "matched" or not week["items"]:
+            parts.append(f"第{week['week_no']}周未推进")
+            continue
+
+        descriptions: list[str] = []
+        for item in week["items"]:
+            label = _TRACK_CATEGORY_LABELS.get(item["category"], item["category"])
+            verb = "记录" if item["category"] == "done" else "提出"
+            descriptions.append(
+                f"{item['user_name']}在【{label}】中{verb}“{item['content']}”"
+            )
+        parts.append(f"第{week['week_no']}周" + "；".join(descriptions))
+
+    return {
+        "question": question,
+        "keyword": keyword,
+        "found": True,
+        "answer": f"关于{keyword}：" + "；".join(parts) + "。",
     }
 
 

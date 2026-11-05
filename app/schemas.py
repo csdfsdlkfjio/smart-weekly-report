@@ -348,6 +348,26 @@ class TrackItemOut(BaseModel):
     timeline: list[TrackWeekOut] = Field(default_factory=list)
 
 
+class AskRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=200)
+    dept_id: int | None = None
+
+    @field_validator("question")
+    @classmethod
+    def _clean_question(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("问题不能为空")
+        return value
+
+
+class AskResponse(BaseModel):
+    question: str
+    keyword: str
+    found: bool
+    answer: str
+
+
 class TimelineEventOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -1253,6 +1253,39 @@ textarea {
   color: var(--success);
 }
 
+.ask-row {
+  display: flex;
+  gap: 10px;
+}
+
+.ask-row input {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  flex: 1;
+  font: inherit;
+  min-width: 0;
+  outline: none;
+  padding: 9px 12px;
+}
+
+.ask-row input:focus {
+  border-color: #93b4ff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.ask-answer {
+  background: var(--primary-soft);
+  border-left: 4px solid var(--primary);
+  border-radius: 0 10px 10px 0;
+  font-size: 14px;
+  line-height: 1.9;
+  margin-top: 14px;
+  padding: 12px 16px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* ---------- 院领导 ---------- */
 .leader-reports {
   display: flex;
@@ -1415,4 +1448,5 @@ textarea {
   .source-badges { justify-content: flex-start; max-width: none; }
   .card-actions { align-items: flex-start; flex-direction: column; gap: 12px; }
   .form-grid { grid-template-columns: 1fr; }
+  .ask-row { flex-direction: column; }
 }

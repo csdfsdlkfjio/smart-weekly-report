@@ -89,6 +89,7 @@
 
   let pendingReturn = null;
   let auditRequestSeq = 0;
+  let askRequestSeq = 0;
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -230,6 +231,7 @@
     };
     closeAdminModals();
     closeAuditModal();
+    closeAskModal();
   }
 
   function showView(viewId) {
@@ -1309,6 +1311,49 @@
       .join("");
   }
 
+  /* ---------------- A5 智能问答 ---------------- */
+
+  function closeAskModal() {
+    askRequestSeq += 1;
+    $("#ask-backdrop").classList.add("hidden");
+  }
+
+  async function askQuestion() {
+    const input = $("#ask-question");
+    const question = input.value.trim();
+    if (!question) {
+      showToast("请输入问题，例如“电子病历最近四周的进展”", "error");
+      input.focus();
+      return;
+    }
+
+    const button = $("#ask-btn");
+    if (button.disabled) return;
+    const seq = ++askRequestSeq;
+    setBusy(button, true, "思考中...");
+    $("#ask-subtitle").textContent = "";
+    $("#ask-answer").textContent = "正在检索历史周报...";
+    $("#ask-backdrop").classList.remove("hidden");
+
+    try {
+      const payload = { question };
+      if (state.user?.dept_id) payload.dept_id = state.user.dept_id;
+      const data = await api("/api/director/ask", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      if (seq !== askRequestSeq) return;
+      $("#ask-subtitle").textContent = data.keyword ? `关键词：${data.keyword}` : "";
+      $("#ask-answer").textContent = data.answer || "暂无回答";
+    } catch (error) {
+      if (seq !== askRequestSeq) return;
+      $("#ask-answer").textContent = `回答失败：${error.message}`;
+      showToast(error.message, "error");
+    } finally {
+      setBusy(button, false);
+    }
+  }
+
   /* ---------------- 操作历史 ---------------- */
 
   function auditDetail(event) {
@@ -1947,6 +1992,18 @@
         `汇总稿 #${report.id} · 最新记录在前`
       );
     });
+    $("#ask-btn").addEventListener("click", askQuestion);
+    $("#ask-question").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        askQuestion();
+      }
+    });
+    $("#ask-close").addEventListener("click", closeAskModal);
+    $("#ask-backdrop").addEventListener("click", (event) => {
+      if (event.target === event.currentTarget) closeAskModal();
+    });
+
     $("#audit-close").addEventListener("click", closeAuditModal);
     $("#audit-backdrop").addEventListener("click", (event) => {
       if (event.target === event.currentTarget) closeAuditModal();
@@ -1996,6 +2053,7 @@
         closeReturnModal();
         closeAdminModals();
         closeAuditModal();
+        closeAskModal();
         if (state.director.trackOpenItemId) {
           resetDirectorTrack();
           if (state.director.report) renderDirectorReport(state.director.report);

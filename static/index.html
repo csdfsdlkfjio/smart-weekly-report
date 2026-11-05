@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>智能周报系统</title>
-  <link rel="stylesheet" href="/static/style.css?v=20261105-13">
+  <link rel="stylesheet" href="/static/style.css?v=20261105-14">
 </head>
 <body>
   <header class="topbar hidden" id="topbar">
@@ -246,6 +246,19 @@
             <button class="btn btn-secondary" id="finalize-btn" type="button">定稿</button>
             <button class="btn btn-primary" id="report-btn" type="button">上报院领导</button>
           </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h3>智能问答（A5）</h3>
+            <p class="muted">基于历史周报回答某项工作最近四周的进展</p>
+          </div>
+        </div>
+        <div class="ask-row">
+          <input id="ask-question" maxlength="200" placeholder="请问某项工作最近四周的进展？（如：电子病历）">
+          <button class="btn btn-primary" id="ask-btn" type="button">提问</button>
         </div>
       </div>
     </section>
@@ -497,8 +510,22 @@
     </div>
   </div>
 
+  <!-- A5 智能问答 -->
+  <div class="modal-backdrop hidden" id="ask-backdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ask-title">
+      <div class="audit-modal-head">
+        <div>
+          <h3 id="ask-title">智能问答</h3>
+          <p class="muted" id="ask-subtitle"></p>
+        </div>
+        <button class="btn btn-ghost btn-small" id="ask-close" type="button">关闭</button>
+      </div>
+      <p class="ask-answer" id="ask-answer"></p>
+    </div>
+  </div>
+
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="/static/app.js?v=20261105-13"></script>
+  <script src="/static/app.js?v=20261105-14"></script>
 </body>
 </html>

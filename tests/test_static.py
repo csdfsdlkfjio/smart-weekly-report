@@ -30,6 +30,10 @@ def test_index_page_is_served_at_root(client):
         "director-history-btn",
         "audit-backdrop",
         "audit-list",
+        "ask-question",
+        "ask-btn",
+        "ask-backdrop",
+        "ask-answer",
         "admin-users-body",
         "admin-depts-body",
         "admin-weeks-body",
@@ -94,6 +98,9 @@ def test_static_assets_are_served(client):
     assert "AUDIT_ACTION_LABELS" in js.text
     assert "+08:00" in js.text
     assert 'timeZone: "Asia/Shanghai"' in js.text
+    assert "async function askQuestion()" in js.text
+    assert "/api/director/ask" in js.text
+    assert "closeAskModal" in js.text
     assert 'openAuditModal(\n        "member_report"' in js.text or '"member_report",' in js.text
     assert '"dept_report",' in js.text
 

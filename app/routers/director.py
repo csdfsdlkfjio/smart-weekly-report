@@ -38,6 +38,18 @@ def aggregate(
     return schemas.DeptReportOut.from_model(report)
 
 
+@router.post("/ask", response_model=schemas.AskResponse)
+def ask(
+    payload: schemas.AskRequest,
+    current_user: DirectorUser,
+    db: Session = Depends(get_db),
+) -> schemas.AskResponse:
+    result = report_service.answer_progress_question(
+        db, current_user, payload.question, payload.dept_id
+    )
+    return schemas.AskResponse(**result)
+
+
 @router.get("/track-item", response_model=schemas.TrackItemOut)
 def track_item(
     current_user: DirectorUser,

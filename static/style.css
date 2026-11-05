@@ -663,6 +663,132 @@ textarea {
   margin-bottom: 20px;
 }
 
+.items-head {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.items-head h4 {
+  margin-bottom: 0;
+}
+
+.track-search {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.track-search input {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font: inherit;
+  font-size: 12px;
+  min-width: 280px;
+  outline: none;
+  padding: 7px 10px;
+}
+
+.track-search input:focus {
+  border-color: #93b4ff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.track-modal {
+  max-width: 680px;
+}
+
+.track-modal-head {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  margin-top: 14px;
+}
+
+.timeline-week {
+  display: flex;
+  gap: 12px;
+  padding-bottom: 14px;
+  position: relative;
+}
+
+.timeline-week:not(:last-child)::before {
+  background: var(--line);
+  bottom: 0;
+  content: "";
+  left: 7px;
+  position: absolute;
+  top: 18px;
+  width: 2px;
+}
+
+.timeline-dot {
+  background: var(--primary);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--primary-soft);
+  flex-shrink: 0;
+  height: 16px;
+  margin-top: 2px;
+  position: relative;
+  width: 16px;
+  z-index: 1;
+}
+
+.timeline-week.is-missed .timeline-dot {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-soft);
+}
+
+.timeline-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.timeline-week-title {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 8px;
+}
+
+.timeline-week-title small {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.timeline-missed {
+  color: var(--danger);
+  font-size: 13px;
+  padding-top: 3px;
+}
+
+.timeline-item {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+  margin-top: 6px;
+  padding: 8px 10px;
+}
+
+.track-empty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 12px 0;
+}
+
 .summary-block h4,
 .items-block h4,
 .two-col h4 {
@@ -1043,4 +1169,6 @@ textarea {
   .merged-item { flex-wrap: wrap; }
   .source-badges { justify-content: flex-start; max-width: none; }
   .card-actions { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .track-search { width: 100%; }
+  .track-search input { min-width: 0; width: 100%; }
 }

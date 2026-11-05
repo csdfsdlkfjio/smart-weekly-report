@@ -15,6 +15,12 @@
     issue: "存在问题",
     coord: "需协调事项",
   };
+  const TRACK_CATEGORY_LABELS = {
+    done: "本周完成",
+    plan: "计划",
+    issue: "存在问题",
+    coord: "需协调",
+  };
   const RISK_LABELS = {
     missing_submission: "未提交",
     unclosed_coord: "协调超期未闭环",
@@ -832,6 +838,88 @@
     closeAddItemRow();
   }
 
+  function closeTrackModal() {
+    $("#track-backdrop").classList.add("hidden");
+  }
+
+  function renderTrackTimeline(data) {
+    const container = $("#track-timeline");
+    const subtitle = $("#track-subtitle");
+
+    if (!data.found) {
+      subtitle.textContent = `关键词“${data.keyword}”`;
+      container.innerHTML =
+        '<p class="track-empty">未找到包含该关键词的历史条目。可尝试“电子病历”或“护理质控”。</p>';
+      return;
+    }
+
+    const firstMatch = data.timeline.find((week) => week.status === "matched");
+    subtitle.textContent = `关键词“${data.keyword}” · 首次出现：第 ${
+      firstMatch ? firstMatch.week_no : "-"
+    } 周 · 共 ${data.timeline.length} 周`;
+
+    container.innerHTML = data.timeline
+      .map((week) => {
+        const missed = week.status !== "matched";
+        const items = (week.items || [])
+          .map((item) => {
+            const label = TRACK_CATEGORY_LABELS[item.category] || item.category;
+            const verb = item.category === "done" ? "记录" : "提出";
+            const status =
+              item.report_status && item.report_status !== "已提交"
+                ? `（${escapeHtml(item.report_status)}）`
+                : "";
+            return `<div class="timeline-item">
+              ${escapeHtml(item.user_name)}在【${escapeHtml(label)}】中${verb}“${escapeHtml(
+                item.content
+              )}”${status}
+            </div>`;
+          })
+          .join("");
+        return `<div class="timeline-week ${missed ? "is-missed" : ""}">
+          <span class="timeline-dot"></span>
+          <div class="timeline-body">
+            <div class="timeline-week-title">
+              第 ${week.week_no} 周
+              <small>${escapeHtml(week.start_date)} ~ ${escapeHtml(week.end_date)}</small>
+            </div>
+            ${missed ? '<p class="timeline-missed">未推进</p>' : items}
+          </div>
+        </div>`;
+      })
+      .join("");
+  }
+
+  async function trackItem() {
+    const input = $("#track-keyword");
+    const keyword = input.value.trim();
+    if (!keyword) {
+      showToast("请输入追踪关键词", "error");
+      input.focus();
+      return;
+    }
+
+    const button = $("#track-btn");
+    if (button.disabled) return;
+    setBusy(button, true, "查询中...");
+    $("#track-subtitle").textContent = `关键词“${keyword}”`;
+    $("#track-timeline").innerHTML = '<p class="track-empty">正在检索历史周报...</p>';
+    $("#track-backdrop").classList.remove("hidden");
+
+    try {
+      const params = new URLSearchParams({ keyword });
+      if (state.user?.dept_id) params.set("dept_id", String(state.user.dept_id));
+      const data = await api(`/api/director/track-item?${params.toString()}`);
+      renderTrackTimeline(data);
+    } catch (error) {
+      showToast(error.message, "error");
+      $("#track-timeline").innerHTML =
+        `<p class="track-empty">查询失败：${escapeHtml(error.message)}</p>`;
+    } finally {
+      setBusy(button, false);
+    }
+  }
+
   function renderReturnPreview(report) {
     const groups = CATEGORIES.map((category) => {
       const items = report[category] || [];
@@ -1104,13 +1192,28 @@
       }
     });
 
+    $("#track-btn").addEventListener("click", trackItem);
+    $("#track-keyword").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        trackItem();
+      }
+    });
+    $("#track-close").addEventListener("click", closeTrackModal);
+    $("#track-backdrop").addEventListener("click", (event) => {
+      if (event.target === event.currentTarget) closeTrackModal();
+    });
+
     $("#modal-cancel").addEventListener("click", closeReturnModal);
     $("#modal-confirm").addEventListener("click", confirmReturn);
     $("#modal-backdrop").addEventListener("click", (event) => {
       if (event.target === event.currentTarget) closeReturnModal();
     });
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") closeReturnModal();
+      if (event.key === "Escape") {
+        closeReturnModal();
+        closeTrackModal();
+      }
     });
   }
 

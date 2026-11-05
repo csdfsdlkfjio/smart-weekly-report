@@ -794,6 +794,98 @@ def report_dept_report(
 # --------------------------------------------------------------------------- #
 
 
+def track_item(
+    db: Session,
+    director: models.User,
+    keyword: str,
+    dept_id: int | None = None,
+) -> dict[str, Any]:
+    """跨周追踪某个关键词：从首次出现周开始，逐周返回进展。"""
+    own_dept_id = _director_dept_id(director)
+    if dept_id is not None and dept_id != own_dept_id:
+        _log_forbidden(
+            db,
+            director,
+            entity_type="department",
+            entity_id=dept_id,
+            detail={
+                "reason": "跨科室追踪事项",
+                "requested_dept_id": dept_id,
+                "own_dept_id": own_dept_id,
+            },
+        )
+        raise PermissionDenied("无权追踪其他科室的事项")
+
+    keyword = keyword.strip()
+    if not keyword:
+        raise ValidationError("追踪关键词不能为空")
+
+    weeks = list(db.scalars(select(models.Week).order_by(models.Week.week_no)))
+    if not weeks:
+        return {
+            "keyword": keyword,
+            "dept_id": own_dept_id,
+            "found": False,
+            "timeline": [],
+        }
+
+    stmt = (
+        select(models.MemberReport, models.User)
+        .join(models.User, models.User.id == models.MemberReport.user_id)
+        .where(models.User.dept_id == own_dept_id)
+    )
+    matches_by_week: dict[int, list[dict[str, Any]]] = {}
+    needle = keyword.casefold()
+
+    for report, member in db.execute(stmt):
+        for category, field in CATEGORY_FIELDS.items():
+            for content in getattr(report, field) or []:
+                text = str(content).strip()
+                if needle in text.casefold():
+                    matches_by_week.setdefault(report.week_id, []).append(
+                        {
+                            "user_id": report.user_id,
+                            "user_name": member.name,
+                            "category": category,
+                            "content": text,
+                            "report_status": report.status,
+                        }
+                    )
+
+    first_match_index = next(
+        (index for index, week in enumerate(weeks) if week.id in matches_by_week),
+        None,
+    )
+    if first_match_index is None:
+        return {
+            "keyword": keyword,
+            "dept_id": own_dept_id,
+            "found": False,
+            "timeline": [],
+        }
+
+    timeline: list[dict[str, Any]] = []
+    for week in weeks[first_match_index:]:
+        items = matches_by_week.get(week.id, [])
+        timeline.append(
+            {
+                "week_id": week.id,
+                "week_no": week.week_no,
+                "start_date": week.start_date,
+                "end_date": week.end_date,
+                "status": "matched" if items else "not_progressed",
+                "items": items,
+            }
+        )
+
+    return {
+        "keyword": keyword,
+        "dept_id": own_dept_id,
+        "found": True,
+        "timeline": timeline,
+    }
+
+
 def list_reported_reports(
     db: Session,
     *,

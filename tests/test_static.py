@@ -26,6 +26,9 @@ def test_index_page_is_served_at_root(client):
         "leader-dept",
         "leader-reports",
         "modal-reason",
+        "track-keyword",
+        "track-timeline",
+        "track-backdrop",
     ):
         assert f'id="{element_id}"' in body
 
@@ -48,6 +51,9 @@ def test_static_assets_are_served(client):
     assert "function renderReturnPreview(report)" in js.text
     assert 'class="issue-source">来源：' in js.text
     assert "item.source_names" in js.text
+    assert "/api/director/track-item" in js.text
+    assert "function renderTrackTimeline(data)" in js.text
+    assert "未推进" in js.text
 
 
 def test_static_responses_are_not_cached(client):

@@ -245,6 +245,30 @@ class OverviewOut(BaseModel):
     members: list[OverviewMemberOut]
 
 
+class TrackedItemOut(BaseModel):
+    user_id: int
+    user_name: str
+    category: str
+    content: str
+    report_status: str
+
+
+class TrackWeekOut(BaseModel):
+    week_id: int
+    week_no: int
+    start_date: date
+    end_date: date
+    status: str  # matched | not_progressed
+    items: list[TrackedItemOut] = Field(default_factory=list)
+
+
+class TrackItemOut(BaseModel):
+    keyword: str
+    dept_id: int
+    found: bool
+    timeline: list[TrackWeekOut] = Field(default_factory=list)
+
+
 class TimelineEventOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

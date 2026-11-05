@@ -38,6 +38,17 @@ def aggregate(
     return schemas.DeptReportOut.from_model(report)
 
 
+@router.get("/track-item", response_model=schemas.TrackItemOut)
+def track_item(
+    current_user: DirectorUser,
+    keyword: str = Query(..., min_length=1, max_length=50),
+    dept_id: int | None = Query(default=None, gt=0),
+    db: Session = Depends(get_db),
+) -> schemas.TrackItemOut:
+    result = report_service.track_item(db, current_user, keyword, dept_id)
+    return schemas.TrackItemOut(**result)
+
+
 @router.get("/member-report/{member_report_id}", response_model=schemas.MemberReportOut)
 def get_member_report(
     member_report_id: int,

@@ -28,6 +28,12 @@
 | A4 | 风险提示 | 未提交人员、协调事项超期未闭环、计划事项连续两周未推进 |
 | A5 | 智能问答 | 未实现（加分项，主动取舍） |
 
+### 加分项
+
+| 功能 | 说明 |
+|---|---|
+| 跨周事项追踪 | 主任输入关键词（如“电子病历”“护理质控”），按周查看该事项的提出人、类别、原文，以及未出现的周次标记“未推进” |
+
 **降级方案**：每个 Agent 节点内部 `try LLM → except → 规则实现`，无 Key / 断网 / 超时 / 额度耗尽均自动降级；主任页可显式切换“大模型 / 规则”，trace 徽标展示每个 Agent 使用的引擎与降级原因。
 
 > 当前交付版本以规则引擎完整运行；LLM 通道保留了统一接口，但尚未接入真实模型 API。即使配置 Key，也会安全降级到规则引擎，不影响功能与演示。
@@ -118,6 +124,15 @@ uvicorn app.main:app --port 8000
 
 `member_a` 登录后选择第 3 周，四类条目均为空白，可新增、保存草稿并提交。
 
+### 跨周事项追踪（加分项）
+
+`director` 登录后，在【归并条目】右侧输入：
+
+- `电子病历` → 第 1、2 周陈医生在【计划】中提出“推进电子病历优化”，第 3 周标记“未推进”。
+- `护理质控` → 第 1、2 周张医生、李医生的相关条目，按周次串联展示。
+
+时间线展示提出人、类别、原文与周次日期；后续周次没有该关键词时显示“未推进”。
+
 ## 目录结构
 
 ```text
@@ -170,6 +185,7 @@ smart-weekly-report/
 | GET | `/api/member/report/versions?week_id=` | member | 历史版本 |
 | GET | `/api/director/overview?week_id=` | director | 提交看板 |
 | POST | `/api/director/aggregate` | director | 一键汇总（含 `engine_switch`） |
+| GET | `/api/director/track-item?keyword=&dept_id=` | director | 跨周追踪关键词，返回逐周时间线 |
 | GET | `/api/director/dept-report?week_id=` | director | 汇总稿详情 |
 | PUT | `/api/director/dept-report/{id}/items` | director | 编辑条目 |
 | PUT | `/api/director/dept-report/{id}/summary` | director | 编辑摘要 |

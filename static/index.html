@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>智能周报系统</title>
-  <link rel="stylesheet" href="/static/style.css?v=20261104-4">
+  <link rel="stylesheet" href="/static/style.css?v=20261105-1">
 </head>
 <body>
   <header class="topbar hidden" id="topbar">
@@ -200,7 +200,13 @@
         </section>
 
         <section class="items-block">
-          <h4>归并条目（A1）<span class="hint">双击内容可编辑，来源人员以徽章标注</span></h4>
+          <div class="items-head">
+            <h4>归并条目（A1）<span class="hint">双击内容可编辑，来源人员以徽章标注</span></h4>
+            <div class="track-search">
+              <input id="track-keyword" maxlength="50" placeholder="输入关键词追踪历史进度（如：电子病历）">
+              <button class="btn btn-secondary btn-small" id="track-btn" type="button">追踪</button>
+            </div>
+          </div>
           <div class="merged-items" id="director-items">
             <p class="empty">尚未汇总</p>
           </div>
@@ -275,6 +281,18 @@
     </section>
   </main>
 
+  <!-- 跨周事项追踪 -->
+  <div class="modal-backdrop hidden" id="track-backdrop">
+    <div class="modal track-modal" role="dialog" aria-modal="true" aria-labelledby="track-title">
+      <div class="track-modal-head">
+        <h3 id="track-title">跨周事项追踪</h3>
+        <button class="btn btn-ghost btn-small" id="track-close" type="button">关闭</button>
+      </div>
+      <p class="muted" id="track-subtitle"></p>
+      <div class="timeline" id="track-timeline"></div>
+    </div>
+  </div>
+
   <!-- 退回理由弹窗 -->
   <div class="modal-backdrop hidden" id="modal-backdrop">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -296,6 +314,6 @@
 
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="/static/app.js?v=20261104-4"></script>
+  <script src="/static/app.js?v=20261105-1"></script>
 </body>
 </html>

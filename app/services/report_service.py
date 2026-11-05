@@ -269,7 +269,21 @@ def submit_member_report(db: Session, user: models.User, week_id: int) -> models
     report.submitted_at = models.utcnow()
     report.returned_at = None
     report.return_reason = None
-    _transition_member(db, report, MemberReportStatus.SUBMITTED.value, user, action, {"version": report.version})
+    _transition_member(
+        db,
+        report,
+        MemberReportStatus.SUBMITTED.value,
+        user,
+        action,
+        {
+            "version": report.version,
+            # 审计记录保留提交时的完整文本，供历史时间线展开查看
+            "done": list(report.done_items or []),
+            "plan": list(report.plan_items or []),
+            "issue": list(report.issue_items or []),
+            "coord": list(report.coord_items or []),
+        },
+    )
 
     db.add(
         models.ReportVersion(
@@ -577,6 +591,8 @@ def aggregate_dept_report(
                 "engine_switch": engine_switch,
                 "member_report_count": len(reports),
                 "item_count": len(items),
+                "summary": summary,
+                "items": items,
             },
         )
     else:
@@ -591,6 +607,8 @@ def aggregate_dept_report(
                 "engine_switch": engine_switch,
                 "member_report_count": len(reports),
                 "item_count": len(items),
+                "summary": summary,
+                "items": items,
             },
         )
         report.items = items

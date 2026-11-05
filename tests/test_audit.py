@@ -17,6 +17,8 @@ def test_member_can_view_own_timeline(client, seed, login, submit_report):
     assert events
     assert events[0]["action"] == "submit"
     assert events[0]["operator_name"] == "张医生"
+    assert events[0]["after_json"]["done"] == ["完成护理质控检查"]
+    assert events[0]["after_json"]["plan"] == ["按计划推进下周工作"]
     assert any(event["action"] == "create_draft" for event in events)
 
 
@@ -67,6 +69,13 @@ def test_dept_timeline_is_descending_and_has_operator_names(client, seed, login,
     assert [event["id"] for event in events] == sorted(
         (event["id"] for event in events), reverse=True
     )
+
+    aggregate_event = next(event for event in events if event["action"] == "aggregate")
+    assert aggregate_event["after_json"]["summary"] == "本周科室完成 1 项工作。完成事项包括：完成护理质控检查。"
+    assert aggregate_event["after_json"]["items"]
+
+    summary_event = next(event for event in events if event["action"] == "update_summary")
+    assert summary_event["before_json"]["summary"] != summary_event["after_json"]["summary"]
 
 
 def test_member_cannot_view_dept_timeline(client, seed, login, submit_report):

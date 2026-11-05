@@ -1326,6 +1326,129 @@
     return parts.join(" · ");
   }
 
+  function auditMemberContentHtml(data) {
+    const sections = CATEGORIES.map((category) => {
+      const items = Array.isArray(data[category]) ? data[category] : [];
+      const body = items.length
+        ? `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+        : '<p class="audit-empty-line">（未填写）</p>';
+      return `<div class="audit-cat">
+        <strong>${MEMBER_CATEGORY_LABELS[category]}</strong>
+        ${body}
+      </div>`;
+    }).join("");
+    return `<div class="audit-categories">${sections}</div>`;
+  }
+
+  function auditMergedContentHtml(items) {
+    if (!Array.isArray(items) || !items.length) return "";
+    return `<div class="audit-cat">
+      <strong>归并条目（${items.length}）</strong>
+      <ul>${items
+        .map((item) => {
+          const label = CATEGORY_LABELS[item.category] || item.category;
+          const sources = Array.isArray(item.source_names) && item.source_names.length
+            ? `（${item.source_names.join("、")}）`
+            : "";
+          return `<li>【${escapeHtml(label)}】${escapeHtml(item.content || "")}${escapeHtml(
+            sources
+          )}</li>`;
+        })
+        .join("")}</ul>
+    </div>`;
+  }
+
+  function auditItemsDiff(beforeItems, afterItems) {
+    const keyOf = (item, index) => item.id || `idx-${index}`;
+    const beforeMap = new Map(
+      (beforeItems || []).map((item, index) => [keyOf(item, index), item])
+    );
+    const afterMap = new Map(
+      (afterItems || []).map((item, index) => [keyOf(item, index), item])
+    );
+    const changes = [];
+
+    afterMap.forEach((after, key) => {
+      const before = beforeMap.get(key);
+      if (!before) {
+        changes.push(`<div class="audit-change">
+          <span class="audit-change-tag is-added">新增</span>
+          <p>${escapeHtml(after.content || "")}</p>
+        </div>`);
+        return;
+      }
+      if (before.content !== after.content || before.category !== after.category) {
+        changes.push(`<div class="audit-change">
+          <span class="audit-change-tag is-modified">修改</span>
+          <p class="audit-diff-before">修改前：${escapeHtml(before.content || "")}</p>
+          <p class="audit-diff-after">修改后：${escapeHtml(after.content || "")}</p>
+        </div>`);
+      }
+    });
+
+    beforeMap.forEach((before, key) => {
+      if (!afterMap.has(key)) {
+        changes.push(`<div class="audit-change">
+          <span class="audit-change-tag is-removed">删除</span>
+          <p>${escapeHtml(before.content || "")}</p>
+        </div>`);
+      }
+    });
+
+    if (changes.length) return changes.slice(0, 30).join("");
+
+    const beforeOrder = (beforeItems || []).map((item) => item.content).join(" → ");
+    const afterOrder = (afterItems || []).map((item) => item.content).join(" → ");
+    if (beforeOrder !== afterOrder) {
+      return `<div class="audit-change">
+        <span class="audit-change-tag is-modified">调整顺序</span>
+        <p class="audit-diff-before">修改前：${escapeHtml(beforeOrder)}</p>
+        <p class="audit-diff-after">修改后：${escapeHtml(afterOrder)}</p>
+      </div>`;
+    }
+    return "";
+  }
+
+  function auditSummaryDiff(before, after) {
+    if ((before || "") === (after || "")) return "";
+    return `<div class="audit-change">
+      <span class="audit-change-tag is-modified">摘要修改</span>
+      <p class="audit-diff-before">修改前：${escapeHtml(before || "（空）")}</p>
+      <p class="audit-diff-after">修改后：${escapeHtml(after || "（空）")}</p>
+    </div>`;
+  }
+
+  function auditDetailsHtml(event) {
+    const before = event.before_json || {};
+    const after = event.after_json || {};
+    const parts = [];
+    const meta = auditDetail(event);
+    if (meta) parts.push(`<p class="audit-detail">${escapeHtml(meta)}</p>`);
+
+    if (event.action === "update_items") {
+      parts.push(auditItemsDiff(before.items || [], after.items || []));
+    } else if (event.action === "update_summary") {
+      parts.push(auditSummaryDiff(before.summary || "", after.summary || ""));
+    } else if (event.action === "aggregate" || event.action === "reaggregate") {
+      if (after.summary) {
+        parts.push(`<div class="audit-cat">
+          <strong>科室摘要</strong>
+          <p>${escapeHtml(after.summary)}</p>
+        </div>`);
+      }
+      parts.push(auditMergedContentHtml(after.items || []));
+    } else if (
+      Array.isArray(after.done) ||
+      Array.isArray(after.plan) ||
+      Array.isArray(after.issue) ||
+      Array.isArray(after.coord)
+    ) {
+      parts.push(auditMemberContentHtml(after));
+    }
+
+    return parts.filter(Boolean).join("");
+  }
+
   function renderAuditTimeline(events) {
     const container = $("#audit-list");
     if (!events.length) {
@@ -1339,7 +1462,7 @@
         const operator =
           event.operator_name ||
           (event.operator_id ? `用户 #${event.operator_id}` : "系统");
-        const detail = auditDetail(event);
+        const details = auditDetailsHtml(event);
         return `<div class="audit-event">
           <span class="audit-dot"></span>
           <div class="audit-body">
@@ -1348,7 +1471,10 @@
               <span class="audit-action">${escapeHtml(action)}</span>
               <time class="audit-time">${formatTime(event.created_at)}</time>
             </div>
-            ${detail ? `<p class="audit-detail">${escapeHtml(detail)}</p>` : ""}
+            ${details ? `
+              <button class="audit-toggle" type="button" data-audit-toggle="${event.id}">展开查看详情</button>
+              <div class="audit-extra hidden" data-audit-extra="${event.id}">${details}</div>
+            ` : ""}
           </div>
         </div>`;
       })
@@ -1813,6 +1939,17 @@
     $("#audit-close").addEventListener("click", closeAuditModal);
     $("#audit-backdrop").addEventListener("click", (event) => {
       if (event.target === event.currentTarget) closeAuditModal();
+    });
+    $("#audit-list").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-audit-toggle]");
+      if (!button) return;
+      const extra = document.querySelector(
+        `[data-audit-extra="${button.dataset.auditToggle}"]`
+      );
+      if (!extra) return;
+      const willExpand = extra.classList.contains("hidden");
+      extra.classList.toggle("hidden", !willExpand);
+      button.textContent = willExpand ? "收起详情" : "展开查看详情";
     });
 
     $("#admin-add-user").addEventListener("click", () => openAdminUserModal());

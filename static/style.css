@@ -1155,6 +1155,104 @@ textarea {
   padding: 12px 0;
 }
 
+.audit-toggle {
+  background: none;
+  border: 0;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 12px;
+  margin-top: 4px;
+  padding: 0;
+}
+
+.audit-toggle:hover {
+  text-decoration: underline;
+}
+
+.audit-extra {
+  border-top: 1px dashed var(--line);
+  margin-top: 8px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding-top: 8px;
+}
+
+.audit-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.audit-cat strong {
+  color: var(--muted);
+  display: block;
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+
+.audit-cat ul {
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.audit-cat p {
+  color: #475569;
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.audit-empty-line {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.audit-change {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+  margin-top: 6px;
+  padding: 8px 10px;
+}
+
+.audit-change p {
+  margin-top: 3px;
+  word-break: break-word;
+}
+
+.audit-change-tag {
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+}
+
+.audit-change-tag.is-added {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.audit-change-tag.is-removed {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.audit-change-tag.is-modified {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.audit-diff-before {
+  color: var(--danger);
+}
+
+.audit-diff-after {
+  color: var(--success);
+}
+
 /* ---------- 院领导 ---------- */
 .leader-reports {
   display: flex;

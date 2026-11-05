@@ -26,6 +26,7 @@
     "参加", "更新", "加强", "落实", "做好", "进行", "实施", "建立",
     "完善", "提升", "保障", "确保", "持续", "积极", "进一步", "及时", "认真",
   ];
+  const RETURNABLE_DEPT_STATUSES = ["已汇总", "已定稿", "已上报", "已退回"];
   const TRACK_TRAILING_WORDS = [
     "已完成", "已开展", "检查", "抽查", "自查", "核查", "优化", "培训",
     "会议", "工作", "事项", "任务", "情况", "问题", "进展", "计划", "总结",
@@ -594,7 +595,9 @@
       ? overview.missing_names.join("、")
       : "无";
 
-    const canReturn = state.director.report?.status === "已汇总";
+    const canReturn = RETURNABLE_DEPT_STATUSES.includes(
+      state.director.report?.status
+    );
     $("#overview-list").innerHTML =
       (overview.members || [])
         .map((member) => {
@@ -639,8 +642,8 @@
 
     const hints = {
       已汇总: "可直接双击条目/摘要修改；确认无误后定稿",
-      已定稿: "已定稿，编辑区已锁定；可上报院领导",
-      已上报: "已上报院领导，汇总内容只读",
+      已定稿: "已定稿，编辑区已锁定；可退回成员重新汇总，或直接上报院领导",
+      已上报: "已上报院领导；如需修改，可退回成员并重新汇总、定稿、上报",
       已退回: "已有成员被退回，请等待重提后重新汇总",
     };
     $("#director-hint").textContent = hints[status] || "汇总后可在本页编辑条目并定稿上报";
@@ -1051,8 +1054,8 @@
 
   async function openReturnModal(memberReportId, memberName) {
     const report = state.director.report;
-    if (!report || report.status !== "已汇总") {
-      showToast("请先汇总后再退回成员周报", "error");
+    if (!report || !RETURNABLE_DEPT_STATUSES.includes(report.status)) {
+      showToast("当前汇总稿状态不可退回成员周报", "error");
       return;
     }
 

@@ -68,6 +68,11 @@ def test_static_assets_are_served(client):
     assert "function submitAdminDept()" in js.text
     assert "function submitAdminWeek()" in js.text
     assert "function submitAdminDeadline()" in js.text
+    assert (
+        'const RETURNABLE_DEPT_STATUSES = ["已汇总", "已定稿", "已上报", "已退回"]'
+        in js.text
+    )
+    assert "RETURNABLE_DEPT_STATUSES.includes" in js.text
 
 
 def test_static_responses_are_not_cached(client):

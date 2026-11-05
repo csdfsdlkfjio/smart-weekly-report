@@ -39,6 +39,8 @@ DEPT_TRANSITIONS: dict[str, set[str]] = {
         DeptReportStatus.REPORTED.value,
         DeptReportStatus.RETURNED.value,
     },
+    # 题目要求“任一环节主任均可发起退回”，已上报也必须能回退
+    DeptReportStatus.REPORTED.value: {DeptReportStatus.RETURNED.value},
     DeptReportStatus.RETURNED.value: {DeptReportStatus.AGGREGATED.value},
 }
 
@@ -689,11 +691,10 @@ def return_member_report(
         raise ValidationError("退回理由不能为空")
 
     dept_report = _get_dept_report_owned(db, director, dept_report_id)
-    if dept_report.status == DeptReportStatus.REPORTED.value:
-        raise StateTransitionError("已上报的周报不能退回")
     if dept_report.status not in (
         DeptReportStatus.AGGREGATED.value,
         DeptReportStatus.FINALIZED.value,
+        DeptReportStatus.REPORTED.value,
         DeptReportStatus.RETURNED.value,
     ):
         raise StateTransitionError(f"当前状态“{dept_report.status}”不能退回")
@@ -719,6 +720,9 @@ def return_member_report(
             "return",
             {"member_report_id": member_report.id, "reason": reason},
         )
+        # 定稿/上报已失效，清空对应时间，需重新汇总、定稿、上报
+        dept_report.finalized_at = None
+        dept_report.reported_at = None
     else:
         audit_service.record(
             db,

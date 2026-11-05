@@ -23,6 +23,7 @@ from app.exceptions import (
 )
 from app.models import DeptReportStatus, MemberReportStatus, Role
 from app.services import ai_service, audit_service
+from app.utils import get_now
 
 MEMBER_TRANSITIONS: dict[str, set[str]] = {
     MemberReportStatus.DRAFT.value: {MemberReportStatus.SUBMITTED.value},
@@ -266,7 +267,7 @@ def submit_member_report(db: Session, user: models.User, week_id: int) -> models
     action = "resubmit" if report.status == MemberReportStatus.RETURNED.value else "submit"
     report.version += 1
     report.locked = True
-    report.submitted_at = models.utcnow()
+    report.submitted_at = get_now()
     report.returned_at = None
     report.return_reason = None
     _transition_member(
@@ -764,7 +765,7 @@ def return_member_report(
 
     member_report.locked = False
     member_report.return_reason = reason
-    member_report.returned_at = models.utcnow()
+    member_report.returned_at = get_now()
     _transition_member(
         db,
         member_report,
@@ -785,7 +786,7 @@ def finalize_dept_report(
     report = _get_dept_report_owned(db, director, dept_report_id)
     if not report.items:
         raise ValidationError("汇总稿没有条目，不能定稿")
-    report.finalized_at = models.utcnow()
+    report.finalized_at = get_now()
     _transition_dept(
         db,
         report,
@@ -803,7 +804,7 @@ def report_dept_report(
     db: Session, director: models.User, dept_report_id: int
 ) -> models.DeptReport:
     report = _get_dept_report_owned(db, director, dept_report_id)
-    report.reported_at = models.utcnow()
+    report.reported_at = get_now()
     _transition_dept(
         db,
         report,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from enum import Enum
 
 from sqlalchemy import (
@@ -19,11 +19,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
-
-
-def utcnow() -> datetime:
-    """返回不含时区的 UTC 时间，便于 SQLite 存取与比较。"""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+from app.utils import get_now
 
 
 class Role(str, Enum):
@@ -51,7 +47,7 @@ class Department(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=get_now, nullable=False)
 
     users: Mapped[list["User"]] = relationship(back_populates="department")
     dept_reports: Mapped[list["DeptReport"]] = relationship(back_populates="department")
@@ -67,7 +63,7 @@ class User(Base):
     dept_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=get_now, nullable=False)
 
     department: Mapped[Department | None] = relationship(back_populates="users")
     member_reports: Mapped[list["MemberReport"]] = relationship(back_populates="user")
@@ -81,7 +77,7 @@ class Week(Base):
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
     deadline: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=get_now, nullable=False)
 
 
 class MemberReport(Base):
@@ -107,8 +103,8 @@ class MemberReport(Base):
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     returned_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     return_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=get_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=get_now, onupdate=get_now, nullable=False)
 
     user: Mapped[User] = relationship(back_populates="member_reports")
     week: Mapped[Week] = relationship()
@@ -136,8 +132,8 @@ class DeptReport(Base):
 
     finalized_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     reported_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=get_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=get_now, onupdate=get_now, nullable=False)
 
     department: Mapped[Department] = relationship(back_populates="dept_reports")
     week: Mapped[Week] = relationship()
@@ -155,7 +151,7 @@ class AuditLog(Base):
     operator_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     before_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     after_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=get_now, nullable=False, index=True)
 
 
 class ReportVersion(Base):
@@ -171,7 +167,7 @@ class ReportVersion(Base):
     report_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     snapshot_json: Mapped[dict] = mapped_column(JSON, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=get_now, nullable=False)
 
 
 class SessionToken(Base):
@@ -182,5 +178,5 @@ class SessionToken(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=get_now, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

@@ -23,6 +23,7 @@ from app.exceptions import AppError
 from app.routers import admin, audit, auth, director, leader, member, meta
 from app.seed import seed_demo_data
 from app.services.week_service import ensure_current_week
+from app.utils import get_now
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ def _log_created_weeks(created: list) -> None:
 async def _week_guard_loop() -> None:
     """每天凌晨做一次兜底检查；管理员已配置覆盖今天时不做任何修改。"""
     while True:
-        now = datetime.now()
+        now = get_now()
         next_midnight = datetime.combine(now.date() + timedelta(days=1), time.min)
         await asyncio.sleep(max(60.0, (next_midnight - now).total_seconds()))
         try:

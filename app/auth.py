@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app import config, models
 from app.db import get_db
+from app.utils import get_now
 from app.exceptions import AuthenticationError, PermissionDenied
 from app.services import audit_service
 
@@ -39,7 +40,7 @@ def create_session(db: Session, user: models.User) -> str:
         models.SessionToken(
             token=raw_token,
             user_id=user.id,
-            expires_at=models.utcnow() + timedelta(hours=config.SESSION_TTL_HOURS),
+            expires_at=get_now() + timedelta(hours=config.SESSION_TTL_HOURS),
         )
     )
     db.commit()
@@ -66,7 +67,7 @@ def get_current_user(
     session = db.scalar(select(models.SessionToken).where(models.SessionToken.token == token))
     if session is None:
         raise AuthenticationError("未登录或登录已失效")
-    if session.expires_at <= models.utcnow():
+    if session.expires_at <= get_now():
         db.delete(session)
         db.commit()
         raise AuthenticationError("登录已过期，请重新登录")

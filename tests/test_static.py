@@ -92,6 +92,8 @@ def test_static_assets_are_served(client):
     assert "展开查看详情" in js.text
     assert "data-audit-extra" in js.text
     assert "AUDIT_ACTION_LABELS" in js.text
+    assert "+08:00" in js.text
+    assert 'timeZone: "Asia/Shanghai"' in js.text
     assert 'openAuditModal(\n        "member_report"' in js.text or '"member_report",' in js.text
     assert '"dept_report",' in js.text
 

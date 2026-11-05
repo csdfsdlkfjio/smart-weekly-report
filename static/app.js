@@ -109,11 +109,25 @@
     });
   }
 
+  function parseBeijingDateTime(value) {
+    // 后端存储的是不带时区的北京时间墙钟值，需要显式按 +08:00 解析
+    if (
+      typeof value === "string" &&
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(value)
+    ) {
+      return new Date(`${value}+08:00`);
+    }
+    return new Date(value);
+  }
+
   function formatTime(value) {
     if (!value) return "-";
-    const date = new Date(value);
+    const date = parseBeijingDateTime(value);
     if (Number.isNaN(date.getTime())) return String(value);
-    return date.toLocaleString("zh-CN", { hour12: false });
+    return date.toLocaleString("zh-CN", {
+      timeZone: "Asia/Shanghai",
+      hour12: false,
+    });
   }
 
   async function api(path, options = {}) {
@@ -1509,12 +1523,9 @@
 
   function toDateTimeLocal(value) {
     if (!value) return "";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    const pad = (number) => String(number).padStart(2, "0");
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
-      date.getHours()
-    )}:${pad(date.getMinutes())}`;
+    // 后端返回北京时间墙钟值，datetime-local 直接使用前 16 位
+    const match = String(value).match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
+    return match ? match[1] : "";
   }
 
   async function loadAdminView() {

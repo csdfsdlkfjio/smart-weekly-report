@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.db import SessionLocal
+from app.utils import get_now
 
 
 def _week_spec(week_no: int, today: date) -> dict[str, Any]:
@@ -40,7 +41,7 @@ def ensure_current_week(
     session = db or SessionLocal()
     created: list[models.Week] = []
     try:
-        target_day = today or date.today()
+        target_day = today or get_now().date()
 
         covering = session.scalar(
             select(models.Week).where(

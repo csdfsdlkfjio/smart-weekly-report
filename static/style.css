@@ -27,6 +27,7 @@ html,
 body {
   margin: 0;
   min-height: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -36,6 +37,8 @@ body {
   font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, -apple-system, sans-serif;
   font-size: 14px;
   line-height: 1.6;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 
 h1, h2, h3, h4, p {
@@ -68,6 +71,7 @@ textarea {
   padding: 12px 28px;
   position: sticky;
   top: 0;
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   z-index: 20;
 }
@@ -1024,6 +1028,7 @@ textarea {
 /* ---------- 管理员只读表格 ---------- */
 .table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .data-table {
@@ -1338,12 +1343,16 @@ textarea {
 .modal-backdrop {
   align-items: center;
   background: rgba(15, 23, 42, 0.45);
+  bottom: 0;
   display: flex;
-  inset: 0;
   justify-content: center;
+  left: 0;
   padding: 20px;
   position: fixed;
+  right: 0;
+  top: 0;
   z-index: 50;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal {
@@ -1469,4 +1478,287 @@ textarea {
   .card-actions { align-items: flex-start; flex-direction: column; gap: 12px; }
   .form-grid { grid-template-columns: 1fr; }
   .ask-row { flex-direction: column; }
+}
+
+/* ---------- 移动端 / 微信 X5 适配 ---------- */
+@media (max-width: 768px) {
+  body {
+    font-size: 13px;
+  }
+
+  .topbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 14px;
+    position: static;
+  }
+
+  .topbar-right {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .brand-text strong {
+    font-size: 15px;
+  }
+
+  .app-main {
+    padding: 16px 12px 48px;
+  }
+
+  .page-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .page-head h2 {
+    font-size: 20px;
+  }
+
+  .page-tools {
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .page-tools .field-inline {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .page-tools .field-inline select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .card {
+    border-radius: 12px;
+    padding: 14px;
+  }
+
+  .card-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .card-head-actions {
+    flex-wrap: wrap;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .stats-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .stats-row > * + * {
+    margin-top: 8px;
+  }
+
+  .stat-card {
+    padding: 10px 12px;
+    width: 100%;
+  }
+
+  .stat-wide {
+    grid-column: auto;
+  }
+
+  .overview-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .overview-grid > * + * {
+    margin-top: 8px;
+  }
+
+  .member-card {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .member-card-actions .btn {
+    width: 100%;
+  }
+
+  .login-wrap {
+    margin-top: 3vh;
+  }
+
+  .login-card {
+    border-radius: 16px;
+    padding: 22px 18px;
+  }
+
+  .login-head h1 {
+    font-size: 22px;
+  }
+
+  .account-chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-chip {
+    padding: 8px 10px;
+  }
+
+  .two-col {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ask-row {
+    flex-direction: column;
+  }
+
+  .items-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .merged-item {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .merged-content {
+    flex: 1 0 100%;
+    order: 2;
+  }
+
+  .category-tag {
+    order: 1;
+  }
+
+  .source-badges {
+    justify-content: flex-start;
+    max-width: none;
+    order: 3;
+    width: 100%;
+  }
+
+  .item-actions {
+    justify-content: flex-start;
+    order: 4;
+    width: 100%;
+  }
+
+  .timeline-item,
+  .audit-change,
+  .issue-item,
+  .risk-item {
+    word-break: break-word;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .data-table {
+    font-size: 12px;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 8px 10px;
+    white-space: nowrap;
+  }
+
+  .data-table td.empty {
+    white-space: normal;
+  }
+
+  .modal-backdrop {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal,
+  .narrow-modal,
+  .audit-modal {
+    max-height: 80vh;
+    max-width: 90%;
+    overflow-y: auto;
+    padding: 18px;
+    width: 90%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .field input,
+  .field textarea,
+  .field select,
+  .field-inline select,
+  .ask-row input,
+  .entry-row input {
+    font-size: 16px;
+    width: 100%;
+  }
+
+  input,
+  textarea,
+  select {
+    max-width: 100%;
+  }
+
+  .entry-row {
+    align-items: stretch;
+  }
+
+  .entry-row input {
+    min-width: 0;
+  }
+
+  .entry-row .row-delete {
+    flex-shrink: 0;
+  }
+
+  .card-actions {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .action-buttons {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .action-buttons .btn {
+    flex: 1;
+  }
+
+  .toast-container {
+    bottom: 16px;
+    left: 12px;
+    right: 12px;
+  }
+
+  .toast {
+    max-width: none;
+  }
+
+  .leader-card-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .trace-badges {
+    justify-content: flex-start;
+  }
 }

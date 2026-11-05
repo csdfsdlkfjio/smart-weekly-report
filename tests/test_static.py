@@ -8,6 +8,10 @@ def test_index_page_is_served_at_root(client):
     assert response.headers["content-type"].startswith("text/html")
     body = response.text
     assert "智能周报系统" in body
+    assert (
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0, '
+        'maximum-scale=1.0, user-scalable=no">' in body
+    )
     assert "/static/app.js?v=" in body
     assert "/static/style.css?v=" in body
     assert 'data-username="director"' in body
@@ -58,6 +62,10 @@ def test_static_assets_are_served(client):
     css = client.get("/static/style.css")
     assert css.status_code == 200
     assert "text/css" in css.headers["content-type"]
+    assert "@media (max-width: 768px)" in css.text
+    assert "flex-direction: column" in css.text
+    assert "max-height: 80vh" in css.text
+    assert "-webkit-overflow-scrolling: touch" in css.text
 
     js = client.get("/static/app.js")
     assert js.status_code == 200

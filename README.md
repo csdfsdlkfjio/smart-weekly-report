@@ -46,21 +46,21 @@
 
 | 层 | 选型 | 版本 |
 |---|---|---|
-| 后端 | Python | 3.12.10（要求 3.10+） |
-| Web 框架 | FastAPI | 0.162.0 |
-| ASGI | uvicorn | 0.54.0 |
-| ORM | SQLAlchemy | 2.1.6 |
-| 数据校验 | Pydantic | 2.14.2 |
+| 后端 | Python | 3.10+（Docker 镜像 3.10.22，已跑通全量测试） |
+| Web 框架 | FastAPI | 0.115.6 |
+| ASGI | uvicorn | 0.34.0 |
+| ORM | SQLAlchemy | 2.0.57 |
+| 数据校验 | Pydantic | 2.10.4 |
 | 数据库 | SQLite | 内置，单文件 |
-| AI 编排 | LangGraph | 1.2.19 |
+| AI 编排 | LangGraph | 0.2.76 |
 | 中文分词 | jieba | 0.42.1 |
-| 密码哈希 | bcrypt | 5.0.0 |
-| 测试 | pytest + httpx | 9.2.0 / 0.28.1 |
+| 密码哈希 | bcrypt | 4.2.1 |
+| 测试 | pytest + httpx | 8.3.4 / 0.28.1 |
 | 前端 | 原生 HTML / CSS / JS | 无构建工具、无 CDN |
 
 ## 快速启动
 
-环境：Windows 10/11、Python 3.10+、Chrome。
+环境：Windows 10/11、Python 3.10+、Chrome 最新版。数据库为本地 SQLite 单文件，不依赖独立数据库服务。
 
 ```bash
 pip install -r requirements.txt
@@ -75,6 +75,24 @@ uvicorn app.main:app --port 8000
 - 启动时自动建表，并幂等灌入演示数据（`AUTO_SEED=0` 可关闭）。
 - seed 生成第 1、2、3 周演示数据；系统启动及每日凌晨会检查是否存在覆盖今天的周次，缺失时才自动兜底生成一个，绝不修改管理员手动配置。
 - 数据库文件位于 `data/weekly_report.db`，已加入 `.gitignore`。
+
+## 🐳 Docker 部署方式
+
+如果评委电脑已安装 Docker / Docker Desktop，可直接在项目根目录运行：
+
+```bash
+docker-compose up -d
+```
+
+首次构建并启动完成后，访问 <http://localhost:8000>。
+
+- 首次启动会自动建表并灌入演示数据
+- SQLite 数据通过 `./data:/app/data` 挂载持久化，容器重启不会丢失
+- 停止服务：`docker-compose down`
+- 更新代码后重新构建：`docker-compose up -d --build`
+- 如果使用 Docker Compose V2，也可使用 `docker compose up -d`
+
+Dockerfile 基于 `python:3.10-slim`，依赖安装与代码复制分层执行以利用构建缓存；无需在本机安装 Python 环境。
 
 ## 演示账号
 
@@ -264,6 +282,17 @@ smart-weekly-report/
 | `LLM_API_KEY` | 空 | 预留，当前未接入真实 API |
 | `LLM_BASE_URL` | OpenAI 兼容地址 | 预留 |
 | `LLM_MODEL` | `gpt-4o-mini` | 预留 |
+
+### 大模型接口、密钥与费用
+
+- **当前交付**：未接入真实大模型 API，A1–A5 全部由规则引擎运行，不产生任何模型调用费用；无需配置密钥即可完整演示。
+- **密钥配置**：如后续接入 OpenAI 兼容接口，通过环境变量配置：
+  - `LLM_API_KEY`：API Key（不写入代码、不提交仓库）
+  - `LLM_BASE_URL`：兼容接口地址
+  - `LLM_MODEL`：模型名称
+- **费用归属**：模型调用费用由部署/使用单位自行承担，交付物本身不包含任何模型额度；当前版本不产生费用。
+- **降级与切换**：主任页提供“大模型 / 规则”显式开关；无外网、接口超时、额度耗尽、无 Key 时，merger / validator / summarizer 均在节点内部自动降级到规则实现，RiskAgent 始终纯规则，`engine_trace` 记录 `degraded` 与原因。
+- **重要说明**：当前 LLM 通道仍是预留桩，即使配置 Key 也会安全降级到规则引擎；演示时请勿声称已启用真实大模型。
 
 ## 测试
 

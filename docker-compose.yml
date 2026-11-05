@@ -1,0 +1,15 @@
+services:
+  weekly-report-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: smart-weekly-report:latest
+    container_name: weekly-report-app
+    ports:
+      - "8000:8000"
+    volumes:
+      # 仅持久化 SQLite 数据目录，不覆盖镜像内代码
+      - ./data:/app/data
+    environment:
+      AUTO_SEED: "1"
+    restart: unless-stopped

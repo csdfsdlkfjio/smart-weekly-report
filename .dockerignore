@@ -1,0 +1,29 @@
+.git
+.gitignore
+
+# Python / virtualenv
+.venv
+venv
+env
+__pycache__
+*.py[cod]
+*.egg-info
+
+# Test / tooling caches
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# IDE / local config
+.idea
+.vscode
+.claude
+.env
+
+# Runtime data and local documents
+*.db
+*.sqlite3
+data/*.log
+*.pdf

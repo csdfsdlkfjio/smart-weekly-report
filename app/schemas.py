@@ -48,6 +48,15 @@ class DepartmentOut(BaseModel):
     name: str
 
 
+class AdminUserOut(BaseModel):
+    id: int
+    username: str
+    name: str
+    role: str
+    dept_id: int | None = None
+    dept_name: str | None = None
+
+
 class ReportItems(BaseModel):
     done: list[str] = Field(default_factory=list)
     plan: list[str] = Field(default_factory=list)

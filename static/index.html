@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>智能周报系统</title>
-  <link rel="stylesheet" href="/static/style.css?v=20261105-2">
+  <link rel="stylesheet" href="/static/style.css?v=20261105-4">
 </head>
 <body>
   <header class="topbar hidden" id="topbar">
@@ -68,6 +68,9 @@
               </button>
               <button class="account-chip account-chip-accent" type="button" data-username="leader">
                 <strong>院领导</strong><span>leader</span>
+              </button>
+              <button class="account-chip" type="button" data-username="admin">
+                <strong>系统管理员</strong><span>admin</span>
               </button>
             </div>
           </div>
@@ -266,11 +269,58 @@
       </div>
     </section>
 
-    <!-- 管理员占位 -->
+    <!-- 系统管理员只读看板 -->
     <section class="view" id="view-admin">
-      <div class="card narrow-card">
-        <h2>管理员账号</h2>
-        <p class="muted">MVP 暂未提供科室/人员/周次维护界面，管理员仅用于数据维护。</p>
+      <div class="page-head">
+        <div>
+          <h2>系统管理员</h2>
+          <p class="muted">只读查看系统用户与周次配置</p>
+        </div>
+        <span class="status-badge is-finalized">只读</span>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>系统用户</h3>
+          <span class="muted" id="admin-user-count"></span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>姓名</th>
+                <th>账号</th>
+                <th>角色</th>
+                <th>所属科室</th>
+              </tr>
+            </thead>
+            <tbody id="admin-users-body">
+              <tr><td colspan="4" class="empty">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>周次配置</h3>
+          <span class="muted" id="admin-week-count"></span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>周次</th>
+                <th>开始日期</th>
+                <th>结束日期</th>
+                <th>截止时间</th>
+              </tr>
+            </thead>
+            <tbody id="admin-weeks-body">
+              <tr><td colspan="4" class="empty">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   </main>
@@ -296,6 +346,6 @@
 
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="/static/app.js?v=20261105-2"></script>
+  <script src="/static/app.js?v=20261105-4"></script>
 </body>
 </html>

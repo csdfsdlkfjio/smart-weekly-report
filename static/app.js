@@ -244,6 +244,7 @@
       await loadLeaderView();
     } else {
       showView("view-admin");
+      await loadAdminView();
     }
   }
 
@@ -1214,6 +1215,70 @@
           <div class="trace-badges">${traceHtml(report.engine_trace || [], "无 trace")}</div>
         </article>`;
       })
+      .join("");
+  }
+
+  /* ---------------- 系统管理员 ---------------- */
+
+  async function loadAdminView() {
+    const usersBody = $("#admin-users-body");
+    const weeksBody = $("#admin-weeks-body");
+    usersBody.innerHTML = '<tr><td colspan="4" class="empty">加载中...</td></tr>';
+    weeksBody.innerHTML = '<tr><td colspan="4" class="empty">加载中...</td></tr>';
+
+    try {
+      const [users, weeks] = await Promise.all([
+        api("/api/admin/users"),
+        api("/api/weeks"),
+      ]);
+      renderAdminUsers(users || []);
+      renderAdminWeeks(weeks || []);
+    } catch (error) {
+      showToast(error.message, "error");
+      const message = `<tr><td colspan="4" class="empty">加载失败：${escapeHtml(
+        error.message
+      )}</td></tr>`;
+      usersBody.innerHTML = message;
+      weeksBody.innerHTML = message;
+    }
+  }
+
+  function renderAdminUsers(users) {
+    $("#admin-user-count").textContent = `共 ${users.length} 人`;
+    const body = $("#admin-users-body");
+    if (!users.length) {
+      body.innerHTML = '<tr><td colspan="4" class="empty">暂无用户</td></tr>';
+      return;
+    }
+    body.innerHTML = users
+      .map(
+        (user) => `<tr>
+          <td>${escapeHtml(user.name)}</td>
+          <td>${escapeHtml(user.username)}</td>
+          <td><span class="role-badge">${escapeHtml(roleLabels[user.role] || user.role)}</span></td>
+          <td>${escapeHtml(user.dept_name || "—")}</td>
+        </tr>`
+      )
+      .join("");
+  }
+
+  function renderAdminWeeks(weeks) {
+    $("#admin-week-count").textContent = `共 ${weeks.length} 周`;
+    const body = $("#admin-weeks-body");
+    if (!weeks.length) {
+      body.innerHTML = '<tr><td colspan="4" class="empty">暂无周次</td></tr>';
+      return;
+    }
+    body.innerHTML = [...weeks]
+      .sort((a, b) => a.week_no - b.week_no)
+      .map(
+        (week) => `<tr>
+          <td>第 ${week.week_no} 周</td>
+          <td>${escapeHtml(week.start_date)}</td>
+          <td>${escapeHtml(week.end_date)}</td>
+          <td>${formatTime(week.deadline)}</td>
+        </tr>`
+      )
       .join("");
   }
 

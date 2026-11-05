@@ -994,6 +994,46 @@ textarea {
   color: var(--warning);
 }
 
+/* ---------- 管理员只读表格 ---------- */
+.table-wrap {
+  overflow-x: auto;
+}
+
+.data-table {
+  border-collapse: collapse;
+  font-size: 13px;
+  width: 100%;
+}
+
+.data-table th,
+.data-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 10px 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.data-table th {
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.data-table td.empty {
+  color: var(--muted);
+  padding: 16px 12px;
+  text-align: center;
+}
+
+.data-table .role-badge {
+  font-size: 11px;
+}
+
 /* ---------- 院领导 ---------- */
 .leader-reports {
   display: flex;

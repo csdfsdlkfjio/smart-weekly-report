@@ -33,7 +33,7 @@
 | 功能 | 说明 |
 |---|---|
 | 跨周事项追踪 | 在归并条目右侧点击“⏱ 追踪”，条目下方直接内联展开逐周时间线：提出人、类别、原文，未出现的周次标记“未推进” |
-| 管理员只读看板 | 展示系统用户（姓名/账号/角色/科室）与周次配置（周次/起止日期/截止时间），不提供增删改 |
+| 管理员极简维护 | 新增/编辑用户（含重置密码）、新增科室、新增周次、修改提交截止时间；列表自动刷新，不提供删除 |
 
 **降级方案**：每个 Agent 节点内部 `try LLM → except → 规则实现`，无 Key / 断网 / 超时 / 额度耗尽均自动降级；主任页可显式切换“大模型 / 规则”，trace 徽标展示每个 Agent 使用的引擎与降级原因。
 
@@ -84,7 +84,7 @@ uvicorn app.main:app --port 8000
 | `member_e` | 科室成员 | 陈医生，含跨周未推进的协调/计划事项 |
 | `director` | 科室主任 | 王主任，汇总/编辑/退回/定稿/上报 |
 | `leader` | 院领导 | 只读查阅已上报周报 |
-| `admin` | 系统管理员 | 只读看板：系统用户列表与周次配置 |
+| `admin` | 系统管理员 | 用户/科室/周次维护与截止时间调整 |
 
 登录页提供演示账号快捷登录按钮，点击即可进入对应视图。
 
@@ -134,14 +134,16 @@ uvicorn app.main:app --port 8000
 
 时间线展示提出人、类别、原文与周次日期；后续周次没有匹配内容时显示“未推进”。再次点击“⏱ 收起”或点击其他条目的追踪按钮即可收起。
 
-### 管理员只读看板
+### 管理员维护
 
-`admin` 登录后默认进入“系统管理员”页面，顶栏显示“系统管理员”角色，页面仅提供只读展示：
+`admin` 登录后默认进入“系统管理员”页面，顶栏显示“系统管理员”角色：
 
-- 系统用户：姓名、账号、角色、所属科室
-- 周次配置：周次编号、开始日期、结束日期、截止时间
+- **系统用户**：新增用户（用户名/姓名/角色/科室/密码）；编辑用户信息并可重置密码
+- **科室配置**：新增科室
+- **周次配置**：新增周次（编号/起止日期/截止时间）；修改任意周次的提交截止时间
+- 新增或修改成功后自动刷新列表；不提供删除操作
 
-不提供新增、编辑、删除按钮。
+所有写操作均走 `/api/admin/*`，后端严格校验 admin 角色。
 
 ## 目录结构
 
@@ -161,7 +163,7 @@ smart-weekly-report/
 │   │   ├── report_service.py   # 状态机与业务编排
 │   │   ├── audit_service.py    # 留痕
 │   │   ├── ai_service.py       # 调用 LangGraph
-│   │   └── admin_service.py    # 管理员只读用户查询
+│   │   └── admin_service.py    # 管理员用户/科室/周次维护
 │   └── agents/
 │       ├── base.py             # AgentResult / BaseAgent
 │       ├── merger.py           # A1 归并（同义词、相似度、数字冲突保留）
@@ -203,7 +205,12 @@ smart-weekly-report/
 | POST | `/api/director/dept-report/{id}/finalize` | director | 定稿 |
 | POST | `/api/director/dept-report/{id}/report` | director | 上报 |
 | GET | `/api/leader/reports?week_id=&dept_id=` | leader | 已上报周报 |
-| GET | `/api/admin/users` | admin | 全部用户（含所属科室），只读 |
+| GET | `/api/admin/users` | admin | 全部用户（含所属科室） |
+| POST | `/api/admin/users` | admin | 新增用户 |
+| PUT | `/api/admin/users/{id}` | admin | 编辑用户 / 重置密码 |
+| POST | `/api/admin/departments` | admin | 新增科室 |
+| POST | `/api/admin/weeks` | admin | 新增周次 |
+| PUT | `/api/admin/weeks/{id}/deadline` | admin | 修改提交截止时间 |
 | GET | `/api/audit/{entity_type}/{id}` | director/leader/admin | 操作时间线 |
 
 ## 配置项
@@ -225,7 +232,7 @@ python -m pytest -q
 node --check static/app.js
 ```
 
-当前测试覆盖：鉴权与越权审计、状态机、汇总到上报主链路、退回/重提/版本快照、A1 近义合并与数字冲突、A3 空泛校验、A4 风险、跨周追踪、LLM 降级 trace、种子数据、管理员只读看板、静态页面。
+当前测试覆盖：鉴权与越权审计、状态机、汇总到上报主链路、退回/重提/版本快照、A1 近义合并与数字冲突、A3 空泛校验、A4 风险、跨周追踪、LLM 降级 trace、种子数据、管理员 CRUD 与校验、静态页面。
 
 ## 数据重置
 
@@ -240,7 +247,7 @@ python -m app.seed --reset   # 清空全部表后重新灌入演示数据
 - 当前 LLM 通道未接入真实模型 API，交付版本以规则引擎运行。
 - 规则归并依赖同义词表，面对高度口语化表述仍需维护词表。
 - SQLite 适合单科室演示规模；多科室高并发需更换数据库。
-- 管理员只读查看用户与周次，不提供新增/编辑/删除；周次由 seed 维护。
+- 管理员提供极简 CRUD（新增/编辑用户、新增科室、新增周次、修改截止时间），不提供删除；初始周次由 seed 维护。
 - 未做移动端深度适配，仅保证 Chrome 与基础响应式可用。
 
 ## 相关文档

@@ -1034,6 +1034,33 @@ textarea {
   font-size: 11px;
 }
 
+.card-head-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.table-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.form-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-hint {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.narrow-modal {
+  max-width: 460px;
+}
+
 /* ---------- 院领导 ---------- */
 .leader-reports {
   display: flex;
@@ -1195,4 +1222,5 @@ textarea {
   .merged-item { flex-wrap: wrap; }
   .source-badges { justify-content: flex-start; max-width: none; }
   .card-actions { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .form-grid { grid-template-columns: 1fr; }
 }

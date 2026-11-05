@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 Category = Literal["done", "plan", "issue", "coord"]
 
@@ -55,6 +55,76 @@ class AdminUserOut(BaseModel):
     role: str
     dept_id: int | None = None
     dept_name: str | None = None
+
+
+class AdminUserCreate(BaseModel):
+    username: str = Field(min_length=2, max_length=32)
+    name: str = Field(min_length=1, max_length=64)
+    role: Literal["member", "director", "leader", "admin"]
+    dept_id: int | None = None
+    password: str = Field(min_length=6, max_length=128)
+
+    @field_validator("username")
+    @classmethod
+    def _clean_username(cls, value: str) -> str:
+        value = value.strip()
+        if not value or any(char.isspace() for char in value):
+            raise ValueError("用户名不能为空且不能包含空格")
+        return value
+
+    @field_validator("name")
+    @classmethod
+    def _clean_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("姓名不能为空")
+        return value
+
+
+class AdminUserUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+    role: Literal["member", "director", "leader", "admin"]
+    dept_id: int | None = None
+    password: str | None = Field(default=None, min_length=6, max_length=128)
+
+    @field_validator("name")
+    @classmethod
+    def _clean_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("姓名不能为空")
+        return value
+
+
+class AdminDepartmentCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+
+    @field_validator("name")
+    @classmethod
+    def _clean_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("科室名称不能为空")
+        return value
+
+
+class AdminWeekCreate(BaseModel):
+    week_no: int = Field(ge=1, le=999)
+    start_date: date
+    end_date: date
+    deadline: datetime
+
+    @model_validator(mode="after")
+    def _check_dates(self) -> "AdminWeekCreate":
+        if self.start_date > self.end_date:
+            raise ValueError("开始日期不能晚于结束日期")
+        if self.deadline.date() < self.end_date:
+            raise ValueError("截止时间不能早于结束日期")
+        return self
+
+
+class AdminWeekDeadlineUpdate(BaseModel):
+    deadline: datetime
 
 
 class ReportItems(BaseModel):

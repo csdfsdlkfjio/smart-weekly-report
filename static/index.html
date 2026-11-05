@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>智能周报系统</title>
-  <link rel="stylesheet" href="/static/style.css?v=20261105-4">
+  <link rel="stylesheet" href="/static/style.css?v=20261105-6">
 </head>
 <body>
   <header class="topbar hidden" id="topbar">
@@ -274,15 +274,18 @@
       <div class="page-head">
         <div>
           <h2>系统管理员</h2>
-          <p class="muted">只读查看系统用户与周次配置</p>
+          <p class="muted">维护系统用户、科室与周次配置</p>
         </div>
-        <span class="status-badge is-finalized">只读</span>
+        <span class="status-badge is-finalized">维护</span>
       </div>
 
       <div class="card">
         <div class="card-head">
           <h3>系统用户</h3>
-          <span class="muted" id="admin-user-count"></span>
+          <div class="card-head-actions">
+            <span class="muted" id="admin-user-count"></span>
+            <button class="btn btn-primary btn-small" id="admin-add-user" type="button">+ 新增用户</button>
+          </div>
         </div>
         <div class="table-wrap">
           <table class="data-table">
@@ -292,10 +295,34 @@
                 <th>账号</th>
                 <th>角色</th>
                 <th>所属科室</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody id="admin-users-body">
-              <tr><td colspan="4" class="empty">加载中...</td></tr>
+              <tr><td colspan="5" class="empty">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>科室配置</h3>
+          <div class="card-head-actions">
+            <span class="muted" id="admin-dept-count"></span>
+            <button class="btn btn-primary btn-small" id="admin-add-dept" type="button">+ 新增科室</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>科室名称</th>
+              </tr>
+            </thead>
+            <tbody id="admin-depts-body">
+              <tr><td colspan="2" class="empty">加载中...</td></tr>
             </tbody>
           </table>
         </div>
@@ -304,7 +331,10 @@
       <div class="card">
         <div class="card-head">
           <h3>周次配置</h3>
-          <span class="muted" id="admin-week-count"></span>
+          <div class="card-head-actions">
+            <span class="muted" id="admin-week-count"></span>
+            <button class="btn btn-primary btn-small" id="admin-add-week" type="button">+ 新增周次</button>
+          </div>
         </div>
         <div class="table-wrap">
           <table class="data-table">
@@ -314,10 +344,11 @@
                 <th>开始日期</th>
                 <th>结束日期</th>
                 <th>截止时间</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody id="admin-weeks-body">
-              <tr><td colspan="4" class="empty">加载中...</td></tr>
+              <tr><td colspan="5" class="empty">加载中...</td></tr>
             </tbody>
           </table>
         </div>
@@ -344,8 +375,112 @@
     </div>
   </div>
 
+  <!-- 管理员：新增/编辑用户 -->
+  <div class="modal-backdrop hidden" id="admin-user-backdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="admin-user-title">
+      <h3 id="admin-user-title">新增用户</h3>
+      <p class="muted" id="admin-user-subtitle">创建账号并设置初始密码</p>
+      <div class="form-grid">
+        <label class="field">
+          <span>用户名</span>
+          <input id="admin-user-username" maxlength="32" placeholder="如 member_f" autocomplete="off">
+        </label>
+        <label class="field">
+          <span>姓名</span>
+          <input id="admin-user-name" maxlength="64" placeholder="如 周医生">
+        </label>
+      </div>
+      <div class="form-grid">
+        <label class="field">
+          <span>角色</span>
+          <select id="admin-user-role">
+            <option value="member">科室成员</option>
+            <option value="director">科室主任</option>
+            <option value="leader">院领导</option>
+            <option value="admin">系统管理员</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>所属科室</span>
+          <select id="admin-user-dept"></select>
+        </label>
+      </div>
+      <label class="field">
+        <span id="admin-user-password-label">密码</span>
+        <input id="admin-user-password" type="password" maxlength="128" autocomplete="new-password" placeholder="至少 6 位">
+      </label>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="admin-user-cancel" type="button">取消</button>
+        <button class="btn btn-primary" id="admin-user-submit" type="button">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 管理员：新增科室 -->
+  <div class="modal-backdrop hidden" id="admin-dept-backdrop">
+    <div class="modal narrow-modal" role="dialog" aria-modal="true" aria-labelledby="admin-dept-title">
+      <h3 id="admin-dept-title">新增科室</h3>
+      <label class="field">
+        <span>科室名称</span>
+        <input id="admin-dept-name" maxlength="64" placeholder="如 儿科">
+      </label>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="admin-dept-cancel" type="button">取消</button>
+        <button class="btn btn-primary" id="admin-dept-submit" type="button">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 管理员：新增周次 -->
+  <div class="modal-backdrop hidden" id="admin-week-backdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="admin-week-title">
+      <h3 id="admin-week-title">新增周次</h3>
+      <div class="form-grid">
+        <label class="field">
+          <span>周次编号</span>
+          <input id="admin-week-no" type="number" min="1" max="999" placeholder="如 4">
+        </label>
+        <label class="field">
+          <span>截止时间</span>
+          <input id="admin-week-deadline" type="datetime-local">
+        </label>
+      </div>
+      <div class="form-grid">
+        <label class="field">
+          <span>开始日期</span>
+          <input id="admin-week-start" type="date">
+        </label>
+        <label class="field">
+          <span>结束日期</span>
+          <input id="admin-week-end" type="date">
+        </label>
+      </div>
+      <p class="muted form-hint">截止时间不能早于结束日期。</p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="admin-week-cancel" type="button">取消</button>
+        <button class="btn btn-primary" id="admin-week-submit" type="button">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 管理员：修改截止时间 -->
+  <div class="modal-backdrop hidden" id="admin-deadline-backdrop">
+    <div class="modal narrow-modal" role="dialog" aria-modal="true" aria-labelledby="admin-deadline-title">
+      <h3 id="admin-deadline-title">修改提交截止时间</h3>
+      <p class="muted" id="admin-deadline-subtitle"></p>
+      <label class="field">
+        <span>截止时间</span>
+        <input id="admin-deadline-input" type="datetime-local">
+      </label>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="admin-deadline-cancel" type="button">取消</button>
+        <button class="btn btn-primary" id="admin-deadline-submit" type="button">保存</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="/static/app.js?v=20261105-4"></script>
+  <script src="/static/app.js?v=20261105-6"></script>
 </body>
 </html>

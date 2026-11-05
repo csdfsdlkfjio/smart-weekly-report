@@ -63,6 +63,13 @@
       trackError: "",
     },
     leader: { reports: [], weekId: "", deptId: "" },
+    admin: {
+      users: [],
+      weeks: [],
+      departments: [],
+      editingUserId: null,
+      editingWeekId: null,
+    },
   };
 
   let pendingReturn = null;
@@ -117,8 +124,17 @@
       throw new Error("未登录或登录已失效");
     }
     if (!response.ok) {
-      const message = (data && (data.detail || data.message)) || `请求失败（${response.status}）`;
-      throw new Error(message);
+      let message = "";
+      if (data) {
+        if (Array.isArray(data.detail)) {
+          message = data.detail
+            .map((item) => item.msg || JSON.stringify(item))
+            .join("；");
+        } else {
+          message = data.detail || data.message || "";
+        }
+      }
+      throw new Error(message || `请求失败（${response.status}）`);
     }
     return data;
   }
@@ -174,6 +190,14 @@
       trackError: "",
     };
     state.leader = { reports: [], weekId: "", deptId: "" };
+    state.admin = {
+      users: [],
+      weeks: [],
+      departments: [],
+      editingUserId: null,
+      editingWeekId: null,
+    };
+    closeAdminModals();
   }
 
   function showView(viewId) {
@@ -1220,26 +1244,45 @@
 
   /* ---------------- 系统管理员 ---------------- */
 
+  function toDateTimeLocal(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const pad = (number) => String(number).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+      date.getHours()
+    )}:${pad(date.getMinutes())}`;
+  }
+
   async function loadAdminView() {
     const usersBody = $("#admin-users-body");
     const weeksBody = $("#admin-weeks-body");
-    usersBody.innerHTML = '<tr><td colspan="4" class="empty">加载中...</td></tr>';
-    weeksBody.innerHTML = '<tr><td colspan="4" class="empty">加载中...</td></tr>';
+    const deptsBody = $("#admin-depts-body");
+    usersBody.innerHTML = '<tr><td colspan="5" class="empty">加载中...</td></tr>';
+    weeksBody.innerHTML = '<tr><td colspan="5" class="empty">加载中...</td></tr>';
+    deptsBody.innerHTML = '<tr><td colspan="2" class="empty">加载中...</td></tr>';
 
     try {
-      const [users, weeks] = await Promise.all([
+      const [users, weeks, departments] = await Promise.all([
         api("/api/admin/users"),
         api("/api/weeks"),
+        api("/api/departments"),
       ]);
-      renderAdminUsers(users || []);
-      renderAdminWeeks(weeks || []);
+      state.admin.users = users || [];
+      state.admin.weeks = weeks || [];
+      state.admin.departments = departments || [];
+      renderAdminUsers(state.admin.users);
+      renderAdminDepartments(state.admin.departments);
+      renderAdminWeeks(state.admin.weeks);
     } catch (error) {
       showToast(error.message, "error");
-      const message = `<tr><td colspan="4" class="empty">加载失败：${escapeHtml(
+      const message = `<tr><td colspan="5" class="empty">加载失败：${escapeHtml(
         error.message
       )}</td></tr>`;
       usersBody.innerHTML = message;
       weeksBody.innerHTML = message;
+      deptsBody.innerHTML =
+        `<tr><td colspan="2" class="empty">加载失败：${escapeHtml(error.message)}</td></tr>`;
     }
   }
 
@@ -1247,7 +1290,7 @@
     $("#admin-user-count").textContent = `共 ${users.length} 人`;
     const body = $("#admin-users-body");
     if (!users.length) {
-      body.innerHTML = '<tr><td colspan="4" class="empty">暂无用户</td></tr>';
+      body.innerHTML = '<tr><td colspan="5" class="empty">暂无用户</td></tr>';
       return;
     }
     body.innerHTML = users
@@ -1257,6 +1300,35 @@
           <td>${escapeHtml(user.username)}</td>
           <td><span class="role-badge">${escapeHtml(roleLabels[user.role] || user.role)}</span></td>
           <td>${escapeHtml(user.dept_name || "—")}</td>
+          <td><div class="table-actions">
+            <button class="btn btn-ghost btn-small" type="button" data-edit-user="${user.id}">编辑</button>
+          </div></td>
+        </tr>`
+      )
+      .join("");
+
+    $$("[data-edit-user]", body).forEach((button) => {
+      button.addEventListener("click", () => {
+        const user = state.admin.users.find(
+          (item) => item.id === Number(button.dataset.editUser)
+        );
+        if (user) openAdminUserModal(user);
+      });
+    });
+  }
+
+  function renderAdminDepartments(departments) {
+    $("#admin-dept-count").textContent = `共 ${departments.length} 个`;
+    const body = $("#admin-depts-body");
+    if (!departments.length) {
+      body.innerHTML = '<tr><td colspan="2" class="empty">暂无科室</td></tr>';
+      return;
+    }
+    body.innerHTML = departments
+      .map(
+        (department) => `<tr>
+          <td>${department.id}</td>
+          <td>${escapeHtml(department.name)}</td>
         </tr>`
       )
       .join("");
@@ -1266,7 +1338,7 @@
     $("#admin-week-count").textContent = `共 ${weeks.length} 周`;
     const body = $("#admin-weeks-body");
     if (!weeks.length) {
-      body.innerHTML = '<tr><td colspan="4" class="empty">暂无周次</td></tr>';
+      body.innerHTML = '<tr><td colspan="5" class="empty">暂无周次</td></tr>';
       return;
     }
     body.innerHTML = [...weeks]
@@ -1277,9 +1349,242 @@
           <td>${escapeHtml(week.start_date)}</td>
           <td>${escapeHtml(week.end_date)}</td>
           <td>${formatTime(week.deadline)}</td>
+          <td><div class="table-actions">
+            <button class="btn btn-ghost btn-small" type="button" data-edit-deadline="${week.id}">修改截止时间</button>
+          </div></td>
         </tr>`
       )
       .join("");
+
+    $$("[data-edit-deadline]", body).forEach((button) => {
+      button.addEventListener("click", () =>
+        openAdminDeadlineModal(Number(button.dataset.editDeadline))
+      );
+    });
+  }
+
+  function populateAdminDeptSelect(selectedId) {
+    const select = $("#admin-user-dept");
+    select.innerHTML = state.admin.departments
+      .map(
+        (department) =>
+          `<option value="${department.id}">${escapeHtml(department.name)}</option>`
+      )
+      .join("");
+    if (selectedId) select.value = String(selectedId);
+  }
+
+  function syncAdminUserDeptField() {
+    const role = $("#admin-user-role").value;
+    const select = $("#admin-user-dept");
+    const needsDepartment = role === "member" || role === "director";
+    select.disabled = !needsDepartment;
+    if (!needsDepartment) select.value = "";
+  }
+
+  function openAdminUserModal(user = null) {
+    state.admin.editingUserId = user ? user.id : null;
+    $("#admin-user-title").textContent = user ? "编辑用户" : "新增用户";
+    $("#admin-user-subtitle").textContent = user
+      ? `账号 ${user.username}（用户名不可修改）`
+      : "创建账号并设置初始密码";
+    $("#admin-user-username").value = user ? user.username : "";
+    $("#admin-user-username").disabled = Boolean(user);
+    $("#admin-user-name").value = user ? user.name : "";
+    $("#admin-user-role").value = user ? user.role : "member";
+    populateAdminDeptSelect(user ? user.dept_id : null);
+    syncAdminUserDeptField();
+    $("#admin-user-password").value = "";
+    $("#admin-user-password-label").textContent = user
+      ? "密码（留空不修改）"
+      : "密码";
+    $("#admin-user-password").placeholder = user
+      ? "留空则不修改，至少 6 位"
+      : "至少 6 位";
+    $("#admin-user-backdrop").classList.remove("hidden");
+    $("#admin-user-username").focus();
+  }
+
+  function closeAdminUserModal() {
+    state.admin.editingUserId = null;
+    $("#admin-user-backdrop").classList.add("hidden");
+  }
+
+  async function submitAdminUser() {
+    const editingId = state.admin.editingUserId;
+    const username = $("#admin-user-username").value.trim();
+    const name = $("#admin-user-name").value.trim();
+    const role = $("#admin-user-role").value;
+    const deptSelect = $("#admin-user-dept");
+    const deptId = deptSelect.disabled ? null : Number(deptSelect.value) || null;
+    const password = $("#admin-user-password").value;
+
+    if (!name) return showToast("请输入姓名", "error");
+    if (!editingId && !username) return showToast("请输入用户名", "error");
+    if (!editingId && !password) return showToast("请输入初始密码", "error");
+    if (password && password.length < 6) {
+      return showToast("密码至少 6 位", "error");
+    }
+    if ((role === "member" || role === "director") && !deptId) {
+      return showToast("科室成员/主任必须选择所属科室", "error");
+    }
+
+    const payload = editingId
+      ? { name, role, dept_id: deptId }
+      : { username, name, role, dept_id: deptId, password };
+    if (editingId && password) payload.password = password;
+
+    const button = $("#admin-user-submit");
+    setBusy(button, true, "保存中...");
+    try {
+      if (editingId) {
+        await api(`/api/admin/users/${editingId}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await api("/api/admin/users", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      }
+      closeAdminUserModal();
+      showToast(editingId ? "用户已更新" : "用户已创建", "success");
+      await loadAdminView();
+    } catch (error) {
+      showToast(error.message, "error");
+    } finally {
+      setBusy(button, false);
+    }
+  }
+
+  function openAdminDeptModal() {
+    $("#admin-dept-name").value = "";
+    $("#admin-dept-backdrop").classList.remove("hidden");
+    $("#admin-dept-name").focus();
+  }
+
+  function closeAdminDeptModal() {
+    $("#admin-dept-backdrop").classList.add("hidden");
+  }
+
+  async function submitAdminDept() {
+    const name = $("#admin-dept-name").value.trim();
+    if (!name) return showToast("请输入科室名称", "error");
+
+    const button = $("#admin-dept-submit");
+    setBusy(button, true, "保存中...");
+    try {
+      await api("/api/admin/departments", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
+      closeAdminDeptModal();
+      showToast("科室已创建", "success");
+      await loadAdminView();
+    } catch (error) {
+      showToast(error.message, "error");
+    } finally {
+      setBusy(button, false);
+    }
+  }
+
+  function openAdminWeekModal() {
+    const nextWeekNo =
+      state.admin.weeks.reduce((max, week) => Math.max(max, week.week_no), 0) + 1;
+    $("#admin-week-no").value = nextWeekNo;
+    $("#admin-week-start").value = "";
+    $("#admin-week-end").value = "";
+    $("#admin-week-deadline").value = "";
+    $("#admin-week-backdrop").classList.remove("hidden");
+    $("#admin-week-no").focus();
+  }
+
+  function closeAdminWeekModal() {
+    $("#admin-week-backdrop").classList.add("hidden");
+  }
+
+  async function submitAdminWeek() {
+    const weekNo = Number($("#admin-week-no").value);
+    const start = $("#admin-week-start").value;
+    const end = $("#admin-week-end").value;
+    const deadline = $("#admin-week-deadline").value;
+
+    if (!weekNo || !start || !end || !deadline) {
+      return showToast("请完整填写周次、起止日期和截止时间", "error");
+    }
+    if (start > end) return showToast("开始日期不能晚于结束日期", "error");
+    if (deadline.slice(0, 10) < end) {
+      return showToast("截止时间不能早于结束日期", "error");
+    }
+
+    const button = $("#admin-week-submit");
+    setBusy(button, true, "保存中...");
+    try {
+      await api("/api/admin/weeks", {
+        method: "POST",
+        body: JSON.stringify({
+          week_no: weekNo,
+          start_date: start,
+          end_date: end,
+          deadline,
+        }),
+      });
+      closeAdminWeekModal();
+      showToast("周次已创建", "success");
+      await loadAdminView();
+    } catch (error) {
+      showToast(error.message, "error");
+    } finally {
+      setBusy(button, false);
+    }
+  }
+
+  function openAdminDeadlineModal(weekId) {
+    const week = state.admin.weeks.find((item) => item.id === weekId);
+    if (!week) return;
+    state.admin.editingWeekId = week.id;
+    $("#admin-deadline-subtitle").textContent =
+      `第 ${week.week_no} 周：${week.start_date} ~ ${week.end_date}`;
+    $("#admin-deadline-input").value = toDateTimeLocal(week.deadline);
+    $("#admin-deadline-backdrop").classList.remove("hidden");
+    $("#admin-deadline-input").focus();
+  }
+
+  function closeAdminDeadlineModal() {
+    state.admin.editingWeekId = null;
+    $("#admin-deadline-backdrop").classList.add("hidden");
+  }
+
+  async function submitAdminDeadline() {
+    const weekId = state.admin.editingWeekId;
+    const deadline = $("#admin-deadline-input").value;
+    if (!weekId || !deadline) {
+      return showToast("请选择截止时间", "error");
+    }
+
+    const button = $("#admin-deadline-submit");
+    setBusy(button, true, "保存中...");
+    try {
+      await api(`/api/admin/weeks/${weekId}/deadline`, {
+        method: "PUT",
+        body: JSON.stringify({ deadline }),
+      });
+      closeAdminDeadlineModal();
+      showToast("截止时间已更新", "success");
+      await loadAdminView();
+    } catch (error) {
+      showToast(error.message, "error");
+    } finally {
+      setBusy(button, false);
+    }
+  }
+
+  function closeAdminModals() {
+    closeAdminUserModal();
+    closeAdminDeptModal();
+    closeAdminWeekModal();
+    closeAdminDeadlineModal();
   }
 
   /* ---------------- 事件绑定 ---------------- */
@@ -1342,6 +1647,29 @@
       }
     });
 
+    $("#admin-add-user").addEventListener("click", () => openAdminUserModal());
+    $("#admin-add-dept").addEventListener("click", openAdminDeptModal);
+    $("#admin-add-week").addEventListener("click", openAdminWeekModal);
+    $("#admin-user-cancel").addEventListener("click", closeAdminUserModal);
+    $("#admin-user-submit").addEventListener("click", submitAdminUser);
+    $("#admin-user-role").addEventListener("change", syncAdminUserDeptField);
+    $("#admin-dept-cancel").addEventListener("click", closeAdminDeptModal);
+    $("#admin-dept-submit").addEventListener("click", submitAdminDept);
+    $("#admin-week-cancel").addEventListener("click", closeAdminWeekModal);
+    $("#admin-week-submit").addEventListener("click", submitAdminWeek);
+    $("#admin-deadline-cancel").addEventListener("click", closeAdminDeadlineModal);
+    $("#admin-deadline-submit").addEventListener("click", submitAdminDeadline);
+    [
+      ["admin-user-backdrop", closeAdminUserModal],
+      ["admin-dept-backdrop", closeAdminDeptModal],
+      ["admin-week-backdrop", closeAdminWeekModal],
+      ["admin-deadline-backdrop", closeAdminDeadlineModal],
+    ].forEach(([id, close]) => {
+      $(`#${id}`).addEventListener("click", (event) => {
+        if (event.target === event.currentTarget) close();
+      });
+    });
+
     $("#modal-cancel").addEventListener("click", closeReturnModal);
     $("#modal-confirm").addEventListener("click", confirmReturn);
     $("#modal-backdrop").addEventListener("click", (event) => {
@@ -1350,6 +1678,7 @@
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         closeReturnModal();
+        closeAdminModals();
         if (state.director.trackOpenItemId) {
           resetDirectorTrack();
           if (state.director.report) renderDirectorReport(state.director.report);

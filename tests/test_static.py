@@ -27,7 +27,12 @@ def test_index_page_is_served_at_root(client):
         "leader-reports",
         "modal-reason",
         "admin-users-body",
+        "admin-depts-body",
         "admin-weeks-body",
+        "admin-user-backdrop",
+        "admin-dept-backdrop",
+        "admin-week-backdrop",
+        "admin-deadline-backdrop",
     ):
         assert f'id="{element_id}"' in body
     assert 'id="track-keyword"' not in body
@@ -59,6 +64,10 @@ def test_static_assets_are_served(client):
     assert "未推进" in js.text
     assert "/api/admin/users" in js.text
     assert "function loadAdminView()" in js.text
+    assert "function submitAdminUser()" in js.text
+    assert "function submitAdminDept()" in js.text
+    assert "function submitAdminWeek()" in js.text
+    assert "function submitAdminDeadline()" in js.text
 
 
 def test_static_responses_are_not_cached(client):

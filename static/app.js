@@ -191,6 +191,7 @@
       trackError: "",
     };
     state.leader = { reports: [], weekId: "", deptId: "" };
+    state.departments = [];
     state.admin = {
       users: [],
       weeks: [],
@@ -1180,21 +1181,33 @@
 
   /* ---------------- 院领导查阅 ---------------- */
 
-  async function loadDepartments() {
-    if (state.departments.length) return;
-    try {
-      state.departments = (await api("/api/departments")) || [];
-    } catch (error) {
-      state.departments = [];
-    }
+  function populateLeaderDeptOptions() {
     const select = $("#leader-dept");
     const current = select.value;
     select.innerHTML =
       '<option value="">全部科室</option>' +
       state.departments
-        .map((department) => `<option value="${department.id}">${escapeHtml(department.name)}</option>`)
+        .map(
+          (department) =>
+            `<option value="${department.id}">${escapeHtml(department.name)}</option>`
+        )
         .join("");
+    // 保持当前选择；首次加载默认“全部科室”
     select.value = current;
+    if (!select.value) select.value = "";
+  }
+
+  async function loadDepartments() {
+    // 即使已有缓存，也必须重新填充下拉框，避免角色切换后只有“全部科室”
+    if (!state.departments.length) {
+      try {
+        state.departments = (await api("/api/departments")) || [];
+      } catch (error) {
+        state.departments = [];
+        showToast(error.message, "error");
+      }
+    }
+    populateLeaderDeptOptions();
   }
 
   async function loadLeaderView() {

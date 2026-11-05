@@ -78,6 +78,9 @@ def test_static_assets_are_served(client):
     assert "↓ 下移" in js.text
     assert "function moveDirectorItem(index, offset)" in js.text
     assert 'source_names: ["主任补充"]' in js.text
+    assert "function populateLeaderDeptOptions()" in js.text
+    assert "/api/departments" in js.text
+    assert '$("#leader-dept").addEventListener("change", loadLeaderView)' in js.text
 
 
 def test_static_responses_are_not_cached(client):

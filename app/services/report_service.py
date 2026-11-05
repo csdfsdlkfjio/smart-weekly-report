@@ -268,6 +268,7 @@ def submit_member_report(db: Session, user: models.User, week_id: int) -> models
     action = "resubmit" if report.status == MemberReportStatus.RETURNED.value else "submit"
     report.version += 1
     report.locked = True
+    report.is_urged = False
     report.submitted_at = get_now()
     report.returned_at = None
     report.return_reason = None
@@ -421,6 +422,66 @@ def get_overview(db: Session, director: models.User, week_id: int) -> dict[str, 
         "previous_item_count": previous_item_count,
         "return_count": _week_return_count(db, dept_id, week.id),
     }
+
+
+def urge_missing_members(
+    db: Session, director: models.User, week_id: int
+) -> dict[str, Any]:
+    """主任一键催报：给本科室未提交成员设置站内提醒。"""
+    dept_id = _director_dept_id(director)
+    week = _get_week(db, week_id)
+
+    members = list(
+        db.scalars(
+            select(models.User)
+            .where(models.User.dept_id == dept_id, models.User.role == Role.MEMBER.value)
+            .order_by(models.User.username)
+        )
+    )
+
+    urged_names: list[str] = []
+    for member in members:
+        report = db.scalar(
+            select(models.MemberReport).where(
+                models.MemberReport.user_id == member.id,
+                models.MemberReport.week_id == week.id,
+            )
+        )
+        if report is not None and report.status == MemberReportStatus.SUBMITTED.value:
+            continue
+
+        if report is None:
+            # 未交成员通常还没有周报记录，创建空白草稿承载站内提醒
+            report = models.MemberReport(
+                user_id=member.id,
+                week_id=week.id,
+                status=MemberReportStatus.DRAFT.value,
+                done_items=[],
+                plan_items=[],
+                issue_items=[],
+                coord_items=[],
+                is_urged=True,
+            )
+            db.add(report)
+            db.flush()
+            changed = True
+        else:
+            changed = not report.is_urged
+            report.is_urged = True
+
+        urged_names.append(member.name)
+        if changed:
+            audit_service.record(
+                db,
+                entity_type="member_report",
+                entity_id=report.id,
+                action="urge",
+                operator_id=director.id,
+                after={"week_id": week.id, "is_urged": True},
+            )
+
+    db.commit()
+    return {"urged_count": len(urged_names), "member_names": urged_names}
 
 
 def get_member_report_for_director(

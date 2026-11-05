@@ -20,6 +20,7 @@ def test_index_page_is_served_at_root(client):
         "stat-items",
         "stat-item-compare",
         "remind-btn",
+        "member-urge-banner",
         "member-save",
         "member-submit",
         "director-items",
@@ -50,6 +51,7 @@ def test_index_page_is_served_at_root(client):
         assert f'id="{element_id}"' in body
     assert 'id="track-keyword"' not in body
     assert "+ 手动补充条目" in body
+    assert "主任已提醒您尽快提交本周周报，请抓紧时间填写。" in body
 
 
 def test_static_assets_are_served(client):
@@ -110,6 +112,8 @@ def test_static_assets_are_served(client):
     assert "$(\"#stat-rate\").textContent" in js.text
     assert "previous_item_count" in js.text
     assert "return_count" in js.text
+    assert "/api/director/urge" in js.text
+    assert "report?.is_urged" in js.text
     assert 'openAuditModal(\n        "member_report"' in js.text or '"member_report",' in js.text
     assert '"dept_report",' in js.text
 

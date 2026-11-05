@@ -46,6 +46,22 @@ def init_db() -> None:
         config.DATA_DIR.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(bind=engine)
     _migrate_sqlite_dept_report_meta()
+    _migrate_sqlite_member_report_urge()
+
+
+def _migrate_sqlite_member_report_urge() -> None:
+    """为已有 SQLite 库补上 is_urged 列。"""
+    if not config.DATABASE_URL.startswith("sqlite"):
+        return
+    with engine.begin() as connection:
+        columns = {
+            row[1]
+            for row in connection.exec_driver_sql("PRAGMA table_info(member_reports)").fetchall()
+        }
+        if columns and "is_urged" not in columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE member_reports ADD COLUMN is_urged BOOLEAN NOT NULL DEFAULT 0"
+            )
 
 
 def _migrate_sqlite_dept_report_meta() -> None:

@@ -38,6 +38,16 @@ def aggregate(
     return schemas.DeptReportOut.from_model(report)
 
 
+@router.post("/urge", response_model=schemas.UrgeResponse)
+def urge(
+    payload: schemas.UrgeRequest,
+    current_user: DirectorUser,
+    db: Session = Depends(get_db),
+) -> schemas.UrgeResponse:
+    result = report_service.urge_missing_members(db, current_user, payload.week_id)
+    return schemas.UrgeResponse(**result)
+
+
 @router.post("/ask", response_model=schemas.AskResponse)
 def ask(
     payload: schemas.AskRequest,

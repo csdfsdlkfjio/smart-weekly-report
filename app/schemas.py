@@ -154,6 +154,7 @@ class MemberReportOut(BaseModel):
     status: str
     version: int
     locked: bool
+    is_urged: bool = False
     done: list[str]
     plan: list[str]
     issue: list[str]
@@ -173,6 +174,7 @@ class MemberReportOut(BaseModel):
             status=report.status,
             version=report.version,
             locked=report.locked,
+            is_urged=bool(report.is_urged),
             done=report.done_items or [],
             plan=report.plan_items or [],
             issue=report.issue_items or [],
@@ -369,6 +371,15 @@ class AskResponse(BaseModel):
     keyword: str
     found: bool
     answer: str
+
+
+class UrgeRequest(BaseModel):
+    week_id: int
+
+
+class UrgeResponse(BaseModel):
+    urged_count: int
+    member_names: list[str] = Field(default_factory=list)
 
 
 class TimelineEventOut(BaseModel):

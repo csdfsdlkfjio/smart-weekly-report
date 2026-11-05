@@ -39,6 +39,7 @@
     update_summary: "编辑摘要",
     finalize: "定稿",
     report: "上报院领导",
+    urge: "催报",
     forbidden_access: "越权访问",
   };
   const TRACK_TRAILING_WORDS = [
@@ -461,6 +462,9 @@
     } else {
       banner.classList.add("hidden");
     }
+
+    const urged = Boolean(report?.is_urged) && !submitted;
+    $("#member-urge-banner").classList.toggle("hidden", !urged);
 
     CATEGORIES.forEach((category) => {
       const container = $(`#rows-${category}`);
@@ -1416,6 +1420,7 @@
       parts.push(`当前 ${after.items.length} 条`);
     }
     if (event.action === "update_summary") parts.push("摘要已更新");
+    if (event.action === "urge") parts.push("主任已提醒提交本周周报");
 
     return parts.join(" · ");
   }
@@ -1988,13 +1993,30 @@
     $("#member-save").addEventListener("click", () => saveMemberDraft({ silent: false }));
     $("#member-submit").addEventListener("click", submitMemberReport);
 
-    $("#remind-btn").addEventListener("click", () => {
-      const missingCount = state.director.overview?.missing_count || 0;
-      if (missingCount === 0) {
+    $("#remind-btn").addEventListener("click", async () => {
+      const weekId = directorWeekId();
+      if (!weekId) return;
+      if (!state.director.overview?.missing_count) {
         showToast("当前没有未提交成员", "info");
         return;
       }
-      showToast("催报提醒已发送", "success");
+
+      const button = $("#remind-btn");
+      setBusy(button, true, "发送中...");
+      try {
+        const result = await api("/api/director/urge", {
+          method: "POST",
+          body: JSON.stringify({ week_id: weekId }),
+        });
+        showToast(
+          result.urged_count > 0 ? "催报提醒已发送" : "当前没有未提交成员",
+          result.urged_count > 0 ? "success" : "info"
+        );
+      } catch (error) {
+        showToast(error.message, "error");
+      } finally {
+        setBusy(button, false);
+      }
     });
 
     $("#aggregate-btn").addEventListener("click", aggregateDirector);

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>智能周报系统</title>
-  <link rel="stylesheet" href="/static/style.css?v=20261105-16">
+  <link rel="stylesheet" href="/static/style.css?v=20261105-17">
 </head>
 <body>
   <header class="topbar hidden" id="topbar">
@@ -81,6 +81,9 @@
 
     <!-- 成员填报 -->
     <section class="view" id="view-member">
+      <div class="alert alert-danger hidden" id="member-urge-banner" role="alert">
+        <strong>主任已提醒您尽快提交本周周报，请抓紧时间填写。</strong>
+      </div>
       <div class="page-head">
         <div>
           <h2>成员填报</h2>
@@ -542,6 +545,6 @@
 
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="/static/app.js?v=20261105-16"></script>
+  <script src="/static/app.js?v=20261105-17"></script>
 </body>
 </html>

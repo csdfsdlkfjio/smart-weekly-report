@@ -94,6 +94,8 @@ class MemberReport(Base):
     )
     version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # 主任催报站内信标记；成员提交后清除
+    is_urged: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     done_items: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     plan_items: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)

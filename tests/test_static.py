@@ -64,6 +64,8 @@ def test_static_assets_are_served(client):
     assert "text/css" in css.headers["content-type"]
     assert "@media (max-width: 768px)" in css.text
     assert "flex-direction: column" in css.text
+    assert "grid-template-columns: 1fr 1fr" in css.text
+    assert ".stat-items-card," in css.text
     assert "max-height: 80vh" in css.text
     assert "-webkit-overflow-scrolling: touch" in css.text
 

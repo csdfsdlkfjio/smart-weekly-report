@@ -486,7 +486,7 @@ textarea {
 .stats-row {
   display: grid;
   gap: 14px;
-  grid-template-columns: 150px 150px minmax(0, 1fr);
+  grid-template-columns: 150px 150px 150px minmax(0, 1fr);
   margin-bottom: 18px;
 }
 
@@ -509,7 +509,15 @@ textarea {
 
 .stat-success { color: var(--success); }
 .stat-danger { color: var(--danger); }
+.stat-rate { color: var(--primary); }
 .stat-names { font-size: 14px; }
+
+.stat-wide-row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
 
 /* ---------- 成员填报 ---------- */
 .editor {

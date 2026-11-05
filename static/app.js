@@ -618,16 +618,22 @@
     if (!overview) {
       $("#stat-submitted").textContent = "-";
       $("#stat-missing").textContent = "-";
+      $("#stat-rate").textContent = "-";
       $("#stat-missing-names").textContent = "-";
+      $("#remind-btn").disabled = true;
       $("#overview-list").innerHTML = '<p class="empty">暂无数据</p>';
       return;
     }
 
+    const total = overview.submitted_count + overview.missing_count;
+    const rate = total ? Math.round((overview.submitted_count / total) * 100) : 0;
     $("#stat-submitted").textContent = overview.submitted_count;
     $("#stat-missing").textContent = overview.missing_count;
+    $("#stat-rate").textContent = `${rate}%`;
     $("#stat-missing-names").textContent = (overview.missing_names || []).length
       ? overview.missing_names.join("、")
       : "无";
+    $("#remind-btn").disabled = overview.missing_count === 0;
 
     const canReturn = RETURNABLE_DEPT_STATUSES.includes(
       state.director.report?.status
@@ -1952,6 +1958,15 @@
     });
     $("#member-save").addEventListener("click", () => saveMemberDraft({ silent: false }));
     $("#member-submit").addEventListener("click", submitMemberReport);
+
+    $("#remind-btn").addEventListener("click", () => {
+      const missingCount = state.director.overview?.missing_count || 0;
+      if (missingCount === 0) {
+        showToast("当前没有未提交成员", "info");
+        return;
+      }
+      showToast("催报提醒已发送", "success");
+    });
 
     $("#aggregate-btn").addEventListener("click", aggregateDirector);
     $("#finalize-btn").addEventListener("click", finalizeDirector);

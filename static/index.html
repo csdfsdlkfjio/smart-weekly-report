@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>智能周报系统</title>
-  <link rel="stylesheet" href="/static/style.css?v=20261105-14">
+  <link rel="stylesheet" href="/static/style.css?v=20261105-15">
 </head>
 <body>
   <header class="topbar hidden" id="topbar">
@@ -167,9 +167,16 @@
           <span class="stat-label">未提交</span>
           <strong class="stat-value stat-danger" id="stat-missing">-</strong>
         </div>
+        <div class="stat-card">
+          <span class="stat-label">提交率</span>
+          <strong class="stat-value stat-rate" id="stat-rate">-</strong>
+        </div>
         <div class="stat-card stat-wide">
           <span class="stat-label">未交人员</span>
-          <strong class="stat-names" id="stat-missing-names">-</strong>
+          <div class="stat-wide-row">
+            <strong class="stat-names" id="stat-missing-names">-</strong>
+            <button class="btn btn-secondary btn-small" id="remind-btn" type="button" disabled>一键催报</button>
+          </div>
         </div>
       </div>
 
@@ -526,6 +533,6 @@
 
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="/static/app.js?v=20261105-14"></script>
+  <script src="/static/app.js?v=20261105-15"></script>
 </body>
 </html>

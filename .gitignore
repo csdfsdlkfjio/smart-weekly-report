@@ -30,3 +30,7 @@ Thumbs.db
 
 # Local files
 01-人工智能岗位招聘实操测试题.pdf
+
+# Local tunnel tools
+natapp.exe
+run_natapp.bat
